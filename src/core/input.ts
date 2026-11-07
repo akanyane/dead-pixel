@@ -82,7 +82,8 @@ export class Input {
   private navDir = '';
 
   // touch
-  touchActive = false;
+  /** Phones and tablets start in touch mode, so hints and on-screen buttons show from the first frame. */
+  touchActive = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   moveStick: Stick | null = null;
   aimStick: Stick | null = null;
   private touchButtons = new Set<string>();

@@ -40,6 +40,7 @@ interface Strings {
     achievements: string;
     manual: string;
     options: string;
+    install: string;
     controls: string;
   };
   options: {
@@ -53,11 +54,12 @@ interface Strings {
     tips: string;
     controls: string;
     highContrast: string;
+    fullscreen: string;
     on: string;
     off: string;
     back: string;
   };
-  boot: { press: string; warning: string; needsKeyboard: string; touch: string };
+  boot: { press: string; warning: string; needsKeyboard: string; touch: string; rotate: string };
   hud: {
     kills: (n: number) => string;
     wave: (i: number, n: number, left: number) => string;
@@ -245,6 +247,7 @@ const pt: Strings = {
     achievements: 'CONQUISTAS',
     manual: 'MANUAL: INIMIGOS E DICAS',
     options: 'OPÇÕES',
+    install: 'INSTALAR O JOGO',
     controls: 'WASD move | mouse mira e atira | ESPAÇO dash | F golpe | Q terminal',
   },
   options: {
@@ -258,6 +261,7 @@ const pt: Strings = {
     tips: 'DICAS E CARTÕES',
     controls: 'CONTROLES',
     highContrast: 'PERIGOS EM ALTO CONTRASTE',
+    fullscreen: 'TELA CHEIA',
     on: 'LIGADO',
     off: 'DESLIGADO',
     back: 'VOLTAR',
@@ -267,6 +271,7 @@ const pt: Strings = {
     warning: 'contém violência pixelada e sangue digital',
     needsKeyboard: 'este jogo precisa de teclado e mouse',
     touch: 'toque na tela para jogar',
+    rotate: 'gire o aparelho para jogar',
   },
   hud: {
     kills: (n) => `${n} abates`,
@@ -651,6 +656,7 @@ const en: Strings = {
     achievements: 'ACHIEVEMENTS',
     manual: 'MANUAL: ENEMIES AND TIPS',
     options: 'OPTIONS',
+    install: 'INSTALL THE GAME',
     controls: 'WASD move | mouse aim and shoot | SPACE dash | F strike | Q terminal',
   },
   options: {
@@ -664,6 +670,7 @@ const en: Strings = {
     tips: 'TIPS AND CARDS',
     controls: 'CONTROLS',
     highContrast: 'HIGH CONTRAST HAZARDS',
+    fullscreen: 'FULLSCREEN',
     on: 'ON',
     off: 'OFF',
     back: 'BACK',
@@ -673,6 +680,7 @@ const en: Strings = {
     warning: 'contains pixelated violence and digital blood',
     needsKeyboard: 'this game needs a keyboard and a mouse',
     touch: 'tap the screen to play',
+    rotate: 'turn your device sideways to play',
   },
   hud: {
     kills: (n) => `${n} kills`,
@@ -1057,6 +1065,7 @@ const es: Strings = {
     achievements: 'LOGROS',
     manual: 'MANUAL: ENEMIGOS Y CONSEJOS',
     options: 'OPCIONES',
+    install: 'INSTALAR EL JUEGO',
     controls: 'WASD mover | ratón apuntar y disparar | ESPACIO dash | F golpe | Q terminal',
   },
   options: {
@@ -1070,6 +1079,7 @@ const es: Strings = {
     tips: 'CONSEJOS Y TARJETAS',
     controls: 'CONTROLES',
     highContrast: 'PELIGROS EN ALTO CONTRASTE',
+    fullscreen: 'PANTALLA COMPLETA',
     on: 'SÍ',
     off: 'NO',
     back: 'VOLVER',
@@ -1079,6 +1089,7 @@ const es: Strings = {
     warning: 'contiene violencia pixelada y sangre digital',
     needsKeyboard: 'este juego necesita teclado y ratón',
     touch: 'toca la pantalla para jugar',
+    rotate: 'gira el dispositivo para jugar',
   },
   hud: {
     kills: (n) => `${n} bajas`,
