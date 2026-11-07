@@ -1,11 +1,12 @@
 import { drawText, wrap } from '../core/font';
 import { H, W, clamp, rand } from '../core/util';
-import { ENEMIES, LEVELS, WEAPONS, WEAPON_ORDER, type PerkDef } from './data';
+import { LEVELS, WEAPONS, WEAPON_ORDER, type PerkDef } from './data';
 import type { Game } from './game';
+import { T } from './i18n';
 import { SPR, drawSprite } from './sprites';
 import { COMMANDS } from './terminal';
 
-function bar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, k: number, col: string, back = '#14141c') {
+export function bar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, k: number, col: string, back = '#14141c') {
   ctx.fillStyle = '#000';
   ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
   ctx.fillStyle = back;
@@ -27,6 +28,7 @@ const TAG_COLOR: Record<PerkDef['tag'], string> = {
 
 export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
   const p = g.player;
+  const t = T();
   const isVoid = g.map.theme === 'void';
   const text = isVoid ? '#111118' : '#dfe6ee';
   const shadow = isVoid ? '#ffffff' : '#000000';
@@ -48,7 +50,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
   drawText(ctx, score, W - 14, 7, text, { align: 'right', scale: 2, shadow });
   if (g.streak > 1) {
     const mult = g.multiplier();
-    drawText(ctx, `x${mult}  ${g.streak} abates`, W - 14, 24, mult > 1 ? '#ffd23d' : text, { align: 'right', shadow });
+    drawText(ctx, `x${mult}  ${t.hud.kills(g.streak)}`, W - 14, 24, mult > 1 ? '#ffd23d' : text, { align: 'right', shadow });
     bar(ctx, W - 74, 34, 60, 2, g.streakT / 3.5, '#ffd23d');
   }
 
@@ -61,7 +63,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
 
   // Chefe ou wave
   if (g.bosses.length && (g.phase === 'boss' || g.phase === 'bossIntro')) {
-    const name = ENEMIES[g.level.boss].name;
+    const name = t.enemies[g.level.boss].name;
     const k = g.bossHpSum() / (g.bossTotal || 1);
     const bw = 168;
     const bx = (W - bw) / 2;
@@ -69,7 +71,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
     bar(ctx, bx, 17, bw, 6, k, isVoid ? '#000' : '#ff2a2a', isVoid ? '#cfcfc8' : '#14141c');
   } else if (g.phase === 'wave') {
     const left = g.queue.length + g.enemies.length;
-    drawText(ctx, `wave ${g.waveIdx + 1}/${g.level.waves.length}  |  ${left} procs`, W / 2 + 14, 8, text, { align: 'center', shadow });
+    drawText(ctx, t.hud.wave(g.waveIdx + 1, g.level.waves.length, left), W / 2 + 14, 8, text, { align: 'center', shadow });
   }
 
   // Aviso
@@ -81,7 +83,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
   if (g.announce) {
     const a = g.announce;
     const pop = clamp((1.6 - a.t) * 12, 0, 1);
-    const s = pop < 1 ? 4 : 3;
+    const s = pop < 1 && a.text.length * 24 < W - 20 ? 4 : a.text.length * 18 < W - 20 ? 3 : 2;
     const jx = rand(-1, 1);
     drawText(ctx, a.text, W / 2 + jx - 2, 62, '#ff004c', { align: 'center', scale: s, alpha: 0.7 });
     drawText(ctx, a.text, W / 2 + jx + 2, 62, '#00e5ff', { align: 'center', scale: s, alpha: 0.7 });
@@ -90,23 +92,22 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
 
   // Apresentação do chefe
   if (g.phase === 'bossIntro') {
-    const t = 3 - g.phaseT;
-    const cardH = Math.min(58, t * 240);
+    const tt = 3 - g.phaseT;
+    const cardH = Math.min(58, tt * 240);
     ctx.fillStyle = 'rgba(0,0,0,.84)';
     ctx.fillRect(0, H / 2 - cardH / 2 - 30, W, cardH);
-    if (t > 0.2) {
-      const name = ENEMIES[g.level.boss].name;
+    if (tt > 0.2) {
+      const name = t.enemies[g.level.boss].name;
       const scale = name.length > 16 ? 2 : 3;
       drawText(ctx, name, W / 2, H / 2 - 48, '#ff2a2a', { align: 'center', scale, shadow: '#400' });
-      const lines = g.level.bossLines;
-      drawText(ctx, lines[t < 1.6 ? 0 : 1], W / 2, H / 2 - 20, '#dfe6ee', { align: 'center' });
+      const lines = t.levels[g.levelIdx].bossLines;
+      drawText(ctx, lines[tt < 1.6 ? 0 : 1], W / 2, H / 2 - 20, '#dfe6ee', { align: 'center' });
     }
   }
 
   // Dica de controles no começo do jogo
-  if (g.levelIdx === 0 && g.waveIdx === 0 && g.time - g.levelStartT < 14) {
-    const hint = 'WASD anda | mouse atira | ESPAÇO dash | F teclada | Q terminal: digite help';
-    drawText(ctx, hint, W / 2, H - 25, '#ffffff', { align: 'center', shadow: '#000' });
+  if (g.levelIdx === 0 && g.waveIdx === 0 && g.time - g.levelStartT < 14 && !g.term.open) {
+    drawText(ctx, t.hud.controlsHint, W / 2, H - 25, '#ffffff', { align: 'center', shadow: '#000' });
   }
 
   // Barra tmux
@@ -140,11 +141,11 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
     const low = hpK < 0.35 && !p.dead ? 0.22 + Math.sin(g.time * 6) * 0.1 : 0;
     const a = Math.max(low, g.hurtFlash * 0.42);
     ctx.fillStyle = `rgba(190,10,20,${a})`;
-    const t = 14 + Math.floor(a * 30);
-    ctx.fillRect(0, 0, W, t);
-    ctx.fillRect(0, H - t, W, t);
-    ctx.fillRect(0, 0, t, H);
-    ctx.fillRect(W - t, 0, t, H);
+    const th = 14 + Math.floor(a * 30);
+    ctx.fillRect(0, 0, W, th);
+    ctx.fillRect(0, H - th, W, th);
+    ctx.fillRect(0, 0, th, H);
+    ctx.fillRect(W - th, 0, th, H);
     ctx.fillStyle = `rgba(190,10,20,${a * 0.35})`;
     ctx.fillRect(0, 0, W, H);
   }
@@ -154,6 +155,19 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
   }
 
   if (g.term.open) renderTerminal(g, ctx);
+}
+
+/** Aviso de skin liberada: desenhado por cima de qualquer tela. */
+export function renderToast(g: Game, ctx: CanvasRenderingContext2D) {
+  const toast = g.toasts[0];
+  if (!toast || g.inEndingPages()) return;
+  const w = toast.text.length * 6 + 16;
+  const x = (W - w) / 2;
+  ctx.fillStyle = '#0c1a12';
+  ctx.fillRect(x, 208, w, 15);
+  ctx.strokeStyle = '#39ff88';
+  ctx.strokeRect(x + 0.5, 208.5, w - 1, 14);
+  drawText(ctx, toast.text, W / 2, 212, '#a8ff3e', { align: 'center' });
 }
 
 function renderTerminal(g: Game, ctx: CanvasRenderingContext2D) {
@@ -169,7 +183,7 @@ function renderTerminal(g: Game, ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = '#39ff88';
   ctx.fillRect(x, y, w, 9);
   drawText(ctx, `root@deadpixel:${g.level.dir}`, x + 3, y, '#02150a');
-  drawText(ctx, 'BULLET TIME  |  ESC fecha', x + w - 3, y, '#02150a', { align: 'right' });
+  drawText(ctx, T().term.bar, x + w - 3, y, '#02150a', { align: 'right' });
 
   // Saída
   const leftW = 354;
@@ -179,8 +193,7 @@ function renderTerminal(g: Game, ctx: CanvasRenderingContext2D) {
     drawText(ctx, l.text.slice(0, Math.floor(leftW / 6)), x + 4, y + 12 + i * 9, l.color);
   });
   const cursor = Math.floor(t.cursorT * 3) % 2 === 0 ? '_' : ' ';
-  const prompt = t.inVim ? ':' : '#';
-  drawText(ctx, `${prompt} ${t.line}${cursor}`, x + 4, y + h - 12, '#ffffff');
+  drawText(ctx, `# ${t.line}${cursor}`, x + 4, y + h - 12, '#ffffff');
 
   // Comandos com custo
   const cx = x + leftW + 6;
@@ -196,10 +209,11 @@ function renderTerminal(g: Game, ctx: CanvasRenderingContext2D) {
 }
 
 export function renderPerks(g: Game, ctx: CanvasRenderingContext2D) {
+  const t = T();
   ctx.fillStyle = 'rgba(2,6,10,.8)';
   ctx.fillRect(0, 0, W, H);
-  drawText(ctx, '$ gh pr list --state open', 22, 26, '#6d8a78');
-  drawText(ctx, 'ESCOLHA UM PULL REQUEST PARA MERGEAR', W / 2, 44, '#ffffff', { align: 'center', scale: 1 });
+  drawText(ctx, '$ patch --list --from op', 22, 26, '#6d8a78');
+  drawText(ctx, t.perkScreen.title, W / 2, 44, '#ffffff', { align: 'center', scale: 1 });
   const cw = 138;
   const ch = 112;
   const gap = 10;
@@ -219,25 +233,39 @@ export function renderPerks(g: Game, ctx: CanvasRenderingContext2D) {
     drawText(ctx, `#${1337 + g.levelIdx * 31 + i + g.waveIdx * 7}`, x + 6, y - lift + 7, '#6d7f8f');
     drawText(ctx, `[${i + 1}]`, x + cw - 6, y - lift + 7, hover ? '#fff' : '#6d7f8f', { align: 'right' });
     drawText(ctx, `${pk.tag}:`, x + 6, y - lift + 20, col);
-    wrap(pk.title, 21).forEach((l, n) => drawText(ctx, l, x + 6, y - lift + 30 + n * 10, '#ffffff'));
-    wrap(pk.desc, 21).forEach((l, n) => drawText(ctx, l, x + 6, y - lift + 56 + n * 10, '#aab7c4'));
+    const pt = t.perks[pk.id];
+    wrap(pt.title, 21).forEach((l, n) => drawText(ctx, l, x + 6, y - lift + 30 + n * 10, '#ffffff'));
+    wrap(pt.desc, 21).forEach((l, n) => drawText(ctx, l, x + 6, y - lift + 56 + n * 10, '#aab7c4'));
     const owned = g.perks[pk.id] ?? 0;
-    if (owned) drawText(ctx, `já mergeado x${owned}`, x + 6, y - lift + ch - 12, '#6d7f8f');
+    if (owned) drawText(ctx, t.perkScreen.owned(owned), x + 6, y - lift + ch - 12, '#6d7f8f');
   });
-  drawText(ctx, 'clique, ou aperte 1, 2 ou 3', W / 2, 192, '#6d8a78', { align: 'center' });
+  drawText(ctx, t.perkScreen.hint, W / 2, 192, '#6d8a78', { align: 'center' });
+}
+
+function storyLines(g: Game) {
+  const t = T();
+  const lines = [...t.levels[g.levelIdx].story];
+  if (g.levelIdx === 0 && g.progress.runs > 0) lines.push(t.story.replay);
+  return lines;
+}
+
+export function storyDuration(g: Game) {
+  return storyLines(g).reduce((n, l) => n + l.length + 6, 0) / 42;
 }
 
 export function renderStory(g: Game, ctx: CanvasRenderingContext2D) {
+  const t = T();
   ctx.fillStyle = '#04060a';
   ctx.fillRect(0, 0, W, H);
-  const lvl = g.level;
-  drawText(ctx, `FASE ${g.levelIdx + 1}/${LEVELS.length}`, 34, 44, '#6d8a78');
-  drawText(ctx, lvl.title, 34, 56, '#ff2a2a', { scale: 4, shadow: '#400' });
-  drawText(ctx, `$ cd ${lvl.dir}`, 34, 100, '#39ff88');
+  const lvl = t.levels[g.levelIdx];
+  drawText(ctx, t.story.phase(g.levelIdx + 1, LEVELS.length), 34, 30, '#6d8a78');
+  drawText(ctx, `run ${String(g.run()).padStart(4, '0')}`, W - 34, 30, '#2f3d36', { align: 'right' });
+  drawText(ctx, lvl.title, 34, 42, '#ff2a2a', { scale: 4, shadow: '#400' });
+  drawText(ctx, `$ cd ${g.level.dir}`, 34, 84, '#39ff88');
   const cps = 42;
   let budget = Math.floor(g.storyT * cps);
-  let y = 118;
-  for (const l of lvl.story) {
+  let y = 100;
+  for (const l of storyLines(g)) {
     if (budget <= 0) break;
     const shown = l.slice(0, budget);
     budget -= l.length + 6;
@@ -247,11 +275,19 @@ export function renderStory(g: Game, ctx: CanvasRenderingContext2D) {
     });
     y += 4;
   }
-  const total = lvl.story.reduce((n, l) => n + l.length + 6, 0);
-  if (g.storyT * cps > total && Math.floor(g.time * 2) % 2) {
-    drawText(ctx, 'pressione ENTER para executar', W / 2, H - 28, '#39ff88', { align: 'center' });
-  } else if (g.storyT * cps <= total) {
-    drawText(ctx, 'ENTER para pular', W - 12, H - 16, '#3b5245', { align: 'right' });
+  // Dica fixa no rodapé, para aproveitar a pausa entre as fases
+  const tip = t.manual.tips[g.storyTip % t.manual.tips.length];
+  ctx.fillStyle = '#0a1612';
+  ctx.fillRect(34, 182, W - 68, 50);
+  ctx.fillStyle = '#39ff88';
+  ctx.fillRect(34, 182, 2, 50);
+  drawText(ctx, `${t.story.tip}: ${tip.title}`, 42, 186, '#39ff88');
+  wrap(tip.body, 66).slice(0, 3).forEach((row, i) => drawText(ctx, row, 42, 197 + i * 10, '#aab7c4'));
+
+  if (g.storyT > storyDuration(g)) {
+    if (Math.floor(g.time * 2) % 2) drawText(ctx, t.story.run, W / 2, H - 28, '#39ff88', { align: 'center' });
+  } else {
+    drawText(ctx, t.story.skip, W - 34, H - 28, '#3b5245', { align: 'right' });
   }
 }
 
@@ -261,16 +297,17 @@ function fmtTime(g: Game) {
 }
 
 export function renderClear(g: Game, ctx: CanvasRenderingContext2D) {
+  const t = T();
   ctx.fillStyle = 'rgba(2,8,6,.88)';
   ctx.fillRect(0, 0, W, H);
   drawText(ctx, '$ ./deploy.sh', 60, 36, '#6d8a78');
   drawText(ctx, 'BUILD PASSED', W / 2, 54, '#39ff88', { align: 'center', scale: 4 });
-  drawText(ctx, `fase "${g.level.title}" estabilizada`, W / 2, 96, '#dfe6ee', { align: 'center' });
+  drawText(ctx, t.clear.stable(t.levels[g.levelIdx].title), W / 2, 96, '#dfe6ee', { align: 'center' });
   const rows: [string, string][] = [
-    ['pontuação', String(g.score)],
-    ['abates', String(g.kills)],
-    ['maior sequência', String(g.maxStreak)],
-    ['tempo de fase', fmtTime(g)],
+    [t.clear.score, String(g.score)],
+    [t.clear.kills, String(g.kills)],
+    [t.clear.streak, String(g.maxStreak)],
+    [t.clear.time, fmtTime(g)],
   ];
   rows.forEach(([a, b], i) => {
     drawText(ctx, a, 150, 118 + i * 11, '#8fa3bf');
@@ -280,43 +317,48 @@ export function renderClear(g: Game, ctx: CanvasRenderingContext2D) {
     drawText(ctx, `$ ${g.rewardMsg}`, W / 2, 176, '#a8ff3e', { align: 'center', scale: 1 });
     const r = g.level.reward;
     if (r) {
-      drawText(ctx, WEAPONS[r].desc, W / 2, 188, '#aab7c4', { align: 'center' });
+      drawText(ctx, wrap(t.weapons[r].desc, 76)[0], W / 2, 188, '#aab7c4', { align: 'center' });
       const spr = SPR.guns[r];
       drawSprite(ctx, spr, W / 2, 172, false, false, 2);
     }
   }
-  if (Math.floor(g.time * 2) % 2) drawText(ctx, 'ENTER para abrir o próximo PR', W / 2, H - 28, '#39ff88', { align: 'center' });
+  if (Math.floor(g.time * 2) % 2) drawText(ctx, t.clear.next, W / 2, H - 28, '#39ff88', { align: 'center' });
 }
 
 export function renderDead(g: Game, ctx: CanvasRenderingContext2D) {
+  const t = T();
   const k = clamp(g.stateT * 2, 0, 1);
-  ctx.fillStyle = `rgba(30,0,4,${0.8 * k})`;
+  ctx.fillStyle = `rgba(30,0,4,${0.86 * k})`;
   ctx.fillRect(0, 0, W, H);
-  drawText(ctx, 'Segmentation fault', W / 2, 62, '#ff2a2a', { align: 'center', scale: 3, shadow: '#400' });
-  drawText(ctx, '(core dumped)', W / 2, 92, '#ff8a8a', { align: 'center', scale: 2 });
-  drawText(ctx, pick2(g), W / 2, 120, '#dfe6ee', { align: 'center' });
-  drawText(ctx, `pontuação ${g.score}   |   abates ${g.kills}   |   recorde ${Math.max(g.best, g.score)}`, W / 2, 140, '#8fa3bf', { align: 'center' });
-  drawText(ctx, 'R reinicia a fase', W / 2, 176, Math.floor(g.time * 2) % 2 ? '#39ff88' : '#a8ffc0', { align: 'center', scale: 2 });
-  drawText(ctx, 'M volta ao menu', W / 2, 200, '#6d8a78', { align: 'center' });
-}
+  drawText(ctx, 'Segmentation fault', W / 2, 34, '#ff2a2a', { align: 'center', scale: 3, shadow: '#400' });
+  drawText(ctx, '(core dumped)', W / 2, 62, '#ff8a8a', { align: 'center', scale: 2 });
+  const ep = t.dead.epitaphs;
+  drawText(ctx, ep[(g.deaths + g.kills) % ep.length], W / 2, 84, '#dfe6ee', { align: 'center' });
 
-const EPITAPHS = [
-  'você morreu com 37 abas abertas.',
-  'em produção ninguém ouve seu grito.',
-  'seu último commit foi "ajustes".',
-  'funcionava na sua máquina.',
-  'o stack trace ficou lindo no chão.',
-  'você foi deprecado.',
-];
-function pick2(g: Game) {
-  return EPITAPHS[(g.deaths + g.kills) % EPITAPHS.length];
+  // Quem matou e como evitar: a morte vira aprendizado
+  const killer = g.lastKiller;
+  const info = killer === 'deploy' || killer === 'corrupt' || killer === 'beam' ? t.killers[killer] : t.enemies[killer];
+  const lines = wrap(info.tip, 68);
+  const boxY = 104;
+  const boxH = 18 + lines.length * 10;
+  ctx.fillStyle = '#1a0408';
+  ctx.fillRect(34, boxY, W - 68, boxH);
+  ctx.fillStyle = '#ff2a2a';
+  ctx.fillRect(34, boxY, 2, boxH);
+  drawText(ctx, t.dead.killedBy(info.name), 42, boxY + 4, '#ff8a8a');
+  lines.forEach((l, i) => drawText(ctx, l, 42, boxY + 15 + i * 10, '#dfe6ee'));
+
+  drawText(ctx, `${t.dead.score} ${g.score}   |   ${t.dead.kills} ${g.kills}   |   ${t.dead.best} ${Math.max(g.best, g.score)}`, W / 2, 170, '#8fa3bf', { align: 'center' });
+  drawText(ctx, t.dead.retry, W / 2, 190, Math.floor(g.time * 2) % 2 ? '#39ff88' : '#a8ffc0', { align: 'center', scale: 2 });
+  drawText(ctx, t.dead.menu, W / 2, 214, '#6d8a78', { align: 'center' });
 }
 
 export function renderPause(g: Game, ctx: CanvasRenderingContext2D, items: string[]) {
+  const t = T();
   ctx.fillStyle = 'rgba(2,6,10,.82)';
   ctx.fillRect(0, 0, W, H);
   drawText(ctx, 'SIGSTOP', W / 2, 48, '#ffffff', { align: 'center', scale: 3 });
-  drawText(ctx, 'processo pausado', W / 2, 76, '#6d8a78', { align: 'center' });
+  drawText(ctx, t.pause.subtitle, W / 2, 76, '#6d8a78', { align: 'center' });
   items.forEach((it, i) => {
     const on = g.pauseIdx === i;
     if (on) {
@@ -325,33 +367,98 @@ export function renderPause(g: Game, ctx: CanvasRenderingContext2D, items: strin
     }
     drawText(ctx, it, W / 2, 96 + i * 16, on ? '#02150a' : '#dfe6ee', { align: 'center' });
   });
-  const lines = ['WASD mover  |  mouse mirar e atirar  |  ESPAÇO dash', 'F ou botão direito: teclada  |  1-6 ou scroll: arma', 'Q: terminal (digite help, rm -rf, kill -9, sudo...)'];
-  lines.forEach((l, i) => drawText(ctx, l, W / 2, 200 + i * 11, '#6d8a78', { align: 'center' }));
+  t.pause.controls.forEach((l, i) => drawText(ctx, l, W / 2, 200 + i * 11, '#6d8a78', { align: 'center' }));
+}
+
+/** Texto que aparece letra por letra. Retorna true quando já terminou de ser escrito. */
+function typed(ctx: CanvasRenderingContext2D, lines: string[], x: number, y: number, chars: number, elapsed: number, cps: number, color: (line: string) => string) {
+  let budget = Math.floor(elapsed * cps);
+  for (const line of lines) {
+    if (budget <= 0) return false;
+    wrap(line.slice(0, budget), chars).forEach((row) => {
+      drawText(ctx, row, x, y, color(line));
+      y += 10;
+    });
+    y += line ? 4 : 8;
+    budget -= line.length + 8;
+  }
+  return budget > 0;
+}
+
+export function logDone(g: Game) {
+  return g.logT * 60 > logLines(g).reduce((n, l) => n + l.length + 8, 0);
+}
+
+function logLines(g: Game) {
+  const fmt = (n: number) => String(n).padStart(4, '0');
+  return T().levels[g.levelIdx].recovered.map((l) => l.replace('{run}', fmt(g.run())).replace('{prev}', String(g.run() - 1)));
+}
+
+/** Fragmento encontrado depois de cada chefe: é aqui que o mistério avança. */
+export function renderLog(g: Game, ctx: CanvasRenderingContext2D) {
+  ctx.fillStyle = '#030507';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#39ff88';
+  ctx.fillRect(30, 44, 2, 150);
+  const first = logLines(g)[0];
+  const done = typed(ctx, logLines(g), 40, 44, 68, g.logT, 60, (l) => (l === first ? '#39ff88' : l.startsWith('op>') ? '#a8ffc0' : l.startsWith('$') || /^\d\d:/.test(l) ? '#8fa3bf' : '#dfe6ee'));
+  if (done && Math.floor(g.time * 2) % 2) drawText(ctx, T().logScreen.next, W / 2, H - 28, '#39ff88', { align: 'center' });
+}
+
+const pageLength = (page: string[]) => page.reduce((n, l) => n + l.length + 8, 0);
+
+export function endingPageDone(g: Game) {
+  const pages = T().ending.pages(g.endRun);
+  return g.endPage >= pages.length || g.endT * 34 > pageLength(pages[g.endPage]);
+}
+
+/** Avança o final. Retorna true quando já não há mais nada para mostrar. */
+export function advanceEnding(g: Game) {
+  const pages = T().ending.pages(g.endRun);
+  if (g.endPage >= pages.length) return true;
+  if (!endingPageDone(g)) g.endT = 999;
+  else {
+    g.endPage++;
+    g.endT = 0;
+  }
+  return false;
 }
 
 export function renderVictory(g: Game, ctx: CanvasRenderingContext2D) {
+  const t = T().ending;
   const k = clamp(g.stateT / 1.5, 0, 1);
-  ctx.fillStyle = `rgba(255,255,255,${k})`;
+  if (k < 1) {
+    ctx.fillStyle = `rgba(255,255,255,${k})`;
+    ctx.fillRect(0, 0, W, H);
+    return;
+  }
+  const pages = t.pages(g.endRun);
+  if (g.endPage < pages.length) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    const page = pages[g.endPage];
+    const remote = g.endPage === pages.length - 1;
+    const done = typed(ctx, page, 44, 64, 66, g.endT, 34, (l) => (remote ? (l.startsWith('$') ? '#ff5a5a' : '#8fa3bf') : l.startsWith('"') ? '#ffffff' : '#8fa3bf'));
+    if (done && Math.floor(g.time * 2) % 2) drawText(ctx, t.next, W / 2, H - 28, '#6d8a78', { align: 'center' });
+    return;
+  }
+  // a tela de teste volta, limpa, como se nada tivesse acontecido
+  ctx.fillStyle = '#ecece6';
   ctx.fillRect(0, 0, W, H);
-  if (k < 1) return;
-  drawText(ctx, 'git revert HEAD', 40, 34, '#888');
-  drawText(ctx, 'O PIXEL VOLTOU.', W / 2, 54, '#000', { align: 'center', scale: 4 });
-  drawText(ctx, 'Os monitores acordaram. O escritório está... bem sujo.', W / 2, 96, '#333', { align: 'center' });
-  drawText(ctx, 'Ninguém se lembra de nada. Segunda tem daily às 9h.', W / 2, 108, '#333', { align: 'center' });
+  drawText(ctx, t.title, W / 2, 46, '#000', { align: 'center', scale: t.title.length > 15 ? 3 : 4 });
   const rows: [string, string][] = [
-    ['pontuação final', String(g.score)],
-    ['recorde', String(Math.max(g.best, g.score))],
-    ['processos encerrados', String(g.kills)],
-    ['maior sequência', String(g.maxStreak)],
-    ['mortes', String(g.deaths)],
+    [t.finalScore, String(g.score)],
+    [t.best, String(Math.max(g.best, g.score))],
+    [t.kills, String(g.kills)],
+    [t.streak, String(g.maxStreak)],
+    [t.deaths, String(g.deaths)],
   ];
   rows.forEach(([a, b], i) => {
-    drawText(ctx, a, 140, 132 + i * 11, '#555');
-    drawText(ctx, b, W - 140, 132 + i * 11, '#000', { align: 'right' });
+    drawText(ctx, a, 140, 92 + i * 11, '#555');
+    drawText(ctx, b, W - 140, 92 + i * 11, '#000', { align: 'right' });
   });
   ctx.fillStyle = '#000';
-  ctx.fillRect(W / 2, 200, 1, 1);
-  drawText(ctx, 'ENTER para o menu', W / 2, H - 28, '#a3101a', { align: 'center' });
-  drawText(ctx, 'obrigado por jogar. faça backup.', W / 2, H - 14, '#888', { align: 'center' });
+  ctx.fillRect(W / 2, 170, 1, 1);
+  drawText(ctx, t.nextRun(g.endRun + 1), W / 2, 196, '#a3101a', { align: 'center' });
+  drawText(ctx, t.menu, W / 2, H - 28, '#555', { align: 'center' });
 }
-

@@ -2,9 +2,9 @@
 
 # 🩸 DEAD PIXEL
 
-**Um pixel morreu em produção. Todo mundo que olhou virou zumbi.**
+**Sexta-feira, 17:58. Um pixel se apagou. Ninguém mais respondeu.**
 
-Shooter 2D top-down para navegador, sangrento e cheio de piadas de TI.
+Shooter 2D top-down de terror e mistério tecnológico, para navegador.
 5 fases, 5 chefes, 6 armas e um terminal de verdade para digitar `rm -rf` em câmera lenta.
 
 ### [![▶ Jogar agora](https://img.shields.io/badge/%E2%96%B6%20JOGAR%20AGORA-e8222a?style=for-the-badge&logoColor=white)](https://akanyane.github.io/dead-pixel/)
@@ -36,7 +36,10 @@ Shooter 2D top-down para navegador, sangrento e cheio de piadas de TI.
 - [Arsenal](#arsenal)
 - [Bestiário](#bestiário)
 - [Fases e chefes](#fases-e-chefes)
-- [Pull requests (melhorias)](#pull-requests-melhorias)
+- [Patches (melhorias)](#patches-melhorias)
+- [Skins](#skins)
+- [Idiomas](#idiomas)
+- [Manual e dicas no jogo](#manual-e-dicas-no-jogo)
 - [Pontuação e sequências](#pontuação-e-sequências)
 - [Dicas de sobrevivência](#dicas-de-sobrevivência)
 - [Como foi feito](#como-foi-feito)
@@ -51,13 +54,20 @@ Shooter 2D top-down para navegador, sangrento e cheio de piadas de TI.
 
 ## A história
 
-> Sexta-feira, 17:58. Alguém fez deploy em produção.
+> Sexta-feira, 17:58. Todos os monitores da Vesper Systems mostram a mesma tela.
 >
-> Um único pixel morreu no monitor de todo mundo. Quem olhou para ele parou de responder. Depois começou a morder.
+> Cinza, uniforme. No centro exato, um único pixel apagado.
 >
-> Você usa dark mode, por isso não viu nada. Ainda.
+> Ninguém pisca. Depois, todos se levantam ao mesmo tempo.
+>
+> No seu terminal, alguém que você não conhece escreve: *"Desça."*
 
-Você é o `root`, o último administrador de sistemas funcionando. Sua missão é descer do escritório até a origem do problema, passando pelo data center, pelos cabos que ninguém documentou e por um sistema escrito em 1974. No fim, você vai ter que olhar para o pixel.
+Você é o `root`. Guiado por um operador anônimo, você desce andar por andar, do escritório ao data center, depois aos cabos que ninguém documentou, e ao que está rodando no fundo de tudo isso.
+
+A cada chefe vencido, um log recuperado revela mais uma parte do que aconteceu. Nem tudo o que o operador diz merece confiança, e o jogo guarda pistas para quem presta atenção: no log de abates, nos tiros inimigos e no próprio terminal.
+
+> [!TIP]
+> A história funciona melhor sem spoilers. Vá até o final, e depois olhe o boot do jogo de novo.
 
 ## Como jogar agora
 
@@ -99,14 +109,14 @@ Depois, abra o endereço que aparecer no terminal (normalmente http://localhost:
 | Mover | `W` `A` `S` `D` ou setas |
 | Mirar e atirar | Mouse (segure o botão esquerdo) |
 | Dash, com invencibilidade | `Espaço` ou `Shift` |
-| Golpe de teclado mecânico | `F` ou botão direito |
+| Golpe de pé de cabra | `F` ou botão direito |
 | Trocar de arma | `1` a `6` ou scroll |
 | Abrir o terminal | `Q` ou `Enter` |
 | Pausar | `Esc` ou `P` |
-| Escolher um pull request | Clique, ou `1` `2` `3` |
+| Escolher um patch | Clique, ou `1` `2` `3` |
 | Reiniciar a fase depois de morrer | `R` |
 
-Não existe recarga: o jogo é ágil demais para isso.
+Não existe recarga.
 
 <div align="center">
   <img src="docs/screenshots/menu.jpg" alt="Menu principal, com o título DEAD PIXEL pingando sangue" width="720">
@@ -114,13 +124,13 @@ Não existe recarga: o jogo é ágil demais para isso.
 
 ## O que torna o jogo diferente
 
+- 🕵️ **Um mistério contado pelo próprio sistema.** Mensagens do operador, logs recuperados e um final que muda o sentido de tudo o que você fez.
 - ⌨️ **Um terminal de verdade como poder especial.** O tempo quase para enquanto você digita comandos, com autocompletar e histórico.
 - 🩸 **O chão guarda tudo.** Cada gota, tripa e explosão fica pintada no mapa até o fim da fase, e você deixa pegadas ao pisar no sangue.
 - 🦴 **Gore com física.** Cabeças, braços, pernas, costelas e olhos voam, quicam, sangram no caminho e ficam onde caíram. Zumbis feridos perdem um braço e continuam vindo.
 - 💥 **Peso em cada tiro.** Tremor de tela, congelamento nos abates pesados, recuo da câmera, cápsulas ejetadas, baterias que explodem em cadeia.
 - 🖥️ **Cara de monitor velho.** Pós-processamento em WebGL com curvatura, scanlines, aberração cromática e glitches quando você apanha.
-- 🎵 **Nenhum arquivo de mídia.** Sprites, efeitos e música são gerados por código. O jogo inteiro cabe em cerca de 46 KB comprimidos.
-- 😂 **Piadas de TI em toda parte.** A barra de status imita o tmux, os abates aparecem como log de processos, e a tela de morte é um `Segmentation fault (core dumped)`.
+- 🎵 **Nenhum arquivo de mídia.** Sprites, efeitos e música são gerados por código. O jogo inteiro cabe em cerca de 75 KB comprimidos.
 
 ## O terminal
 
@@ -144,30 +154,23 @@ Aperte `Q` a qualquer momento. O mundo fica em câmera lenta (8% da velocidade) 
   <img src="docs/screenshots/terminal.jpg" alt="Terminal aberto em bullet time com a lista de comandos e seus custos em RAM" width="720">
 </div>
 
-<details>
-<summary>🥚 Comandos escondidos (spoilers)</summary>
-
-Vários comandos não têm utilidade alguma, e esse é o objetivo: `ls`, `pwd`, `whoami`, `man`, `date`, `uptime`, `ps`, `top`, `git blame`, `git status`, `git push --force`, `npm install`, `coffee`, `hello world`, `cat /dev/urandom`, `chatgpt`, `exit`.
-
-- `vim` te prende no terminal até você descobrir como sair. Quem consegue ganha 100 MB de RAM.
-- `sudo make me a sandwich` dá 1 de HP. Sem `sudo`, não funciona.
-
-</details>
+> [!TIP]
+> O terminal aceita mais do que os comandos da lista. Tente o que você digitaria para investigar um servidor: as respostas contam parte da história.
 
 ## Arsenal
 
-Você começa só com a `printf()`. As outras armas aparecem ao longo do jogo, e cada uma é uma piada com o que o comando faz.
+Você começa só com a `printf()`. As outras armas aparecem ao longo do jogo, cada uma batizada com o que o comando faz.
 
 | # | Arma | Tipo | Dano | Intervalo | Munição máx. | Como conseguir |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `printf()` | Pistola | 13 | 0,20 s | Infinita | Inicial |
 | 2 | `for(;;)` | Submetralhadora | 9 | 0,07 s | 640 | Caixa após a 1ª wave da fase 1 |
-| 3 | `fork()` | Escopeta (9 projéteis) | 11 cada | 0,62 s | 90 | Vencer o Scrum Master |
+| 3 | `fork()` | Escopeta (9 projéteis) | 11 cada | 0,62 s | 90 | Vencer o Supervisor |
 | 4 | `kill -9` | Railgun que atravessa tudo | 170 | 0,85 s | 40 | Vencer o Kernel Panic |
 | 5 | `rm -rf` | Lança-chamas | 5 + fogo | 0,035 s | 800 | Vencer a Hidra |
 | 6 | `DROP TABLE` | Lança-foguetes em área | 140 | 0,95 s | 26 | Vencer o Monolito |
 
-O **teclado mecânico** (`F`) é o seu ataque corpo a corpo. Ele causa 70 de dano em arco, empurra forte, solta teclas pelo chão e cura 3 de HP a cada abate. É a melhor saída quando uma horda encurrala você.
+O **pé de cabra** (`F`) é o seu ataque corpo a corpo. Ele causa 70 de dano em arco, empurra forte e cura 3 de HP a cada abate. É a melhor saída quando uma horda encurrala você.
 
 ## Bestiário
 
@@ -176,7 +179,7 @@ O **teclado mecânico** (`F`) é o seu ataque corpo a corpo. Ele causa 70 de dan
 | **zumbi** (`<defunct>`) | 34 | 30 | Anda e morde. Perde um braço quando ferido |
 | **bug** | 8 | 78 | Enxame rápido em ziguezague |
 | **race condition** | 20 | 96 | Corre de forma errática e nunca chega na hora certa |
-| **recrutador** | 42 | 34 | Mantém distância e dispara "vagas incríveis" |
+| **broadcast** | 42 | 34 | Mantém distância e dispara pacotes de dados por trás da horda |
 | **memory leak** | 80 | 20 | Deixa poças que ferem e atrasam; ao morrer, vira 3 filhotes |
 | **null pointer** | 46 | 44 | Fica intangível, teleporta para perto de você e atira `null` |
 | **segfault** | 26 | 64 | Corre até você, acende o pavio e explode. Morto antes disso, fere os vizinhos |
@@ -186,41 +189,37 @@ O HP cresce 16% e a velocidade cresce 4% a cada fase. As baterias de nobreak ama
 
 ## Fases e chefes
 
-Cada fase tem waves de inimigos e termina em um chefe. Depois de cada wave, você escolhe uma melhoria. Ao morrer, recomeça do início da fase, com tudo o que tinha quando entrou nela.
+Cada fase tem waves de inimigos e termina em um chefe. Depois de cada wave, você aplica um patch. Ao morrer, recomeça do início da fase, com tudo o que tinha quando entrou nela.
 
 ### 1. Open Space, `~/startup`
 
-O escritório depois do expediente: mesas, monitores ainda ligados e post-its.
+O andar da Vesper depois do expediente: mesas, monitores ainda ligados e ninguém respondendo.
 
-**Chefe: Scrum Master** — *"Bom dia, time! Rapidinho: só 15 minutinhos."*
-Lança tickets (`P0`, `BUG`, `TODO`) e convoca a daily, que invoca reforços. Antes de cada **sprint**, marca uma linha vermelha e dispara nela. Se bater na parede, fica atordoado e vulnerável.
+**Chefe: O Supervisor.** Lança leques de alertas e convoca os outros ao redor de si. Antes de cada **avanço**, marca uma linha vermelha e dispara nela. Se bater na parede, fica atordoado e vulnerável.
 
 <div align="center"><img src="docs/screenshots/gameplay-open-space.jpg" alt="Fase Open Space com poças de sangue entre as mesas" width="720"></div>
 
 ### 2. Data Center, `/var/run`
 
-Corredores estreitos entre racks, LEDs piscando e luz azul fria.
+Corredores estreitos entre racks, LEDs piscando e luz azul fria. A sala não deveria estar quente.
 
-**Chefe: Kernel Panic** — *"Not syncing: Attempted to kill init!"*
-Um processador gigante que alterna espirais de tiros hexadecimais, anéis de projéteis, invocações e um laser que varre a sala.
+**Chefe: Kernel Panic.** Um processador gigante que alterna espirais de tiros, anéis de projéteis, invocações e um laser que varre a sala.
 
 <div align="center"><img src="docs/screenshots/boss-kernel-panic.jpg" alt="Chefe Kernel Panic no data center" width="720"></div>
 
 ### 3. Undernet, `/dev/null`
 
-Cavernas geradas proceduralmente, cabos sem documentação e poças tóxicas brilhando no escuro.
+Um andar que não está na planta: cavernas geradas proceduralmente, cabos sem documentação e poças tóxicas brilhando no escuro.
 
-**Chefe: Hidra de Microsserviços** — *"Cada serviço tem uma única responsabilidade. A minha é te devorar."*
-Corte um nó e nascem dois menores e mais rápidos, em três gerações. No total, são 7 nós para destruir.
+**Chefe: Hidra de Microsserviços.** Corte um nó e nascem dois menores e mais rápidos, em três gerações. No total, são 7 nós para destruir.
 
 <div align="center"><img src="docs/screenshots/boss-hidra.jpg" alt="Hidra de Microsserviços em uma caverna verde" width="720"></div>
 
 ### 4. Produção, `/prod`
 
-Tudo vermelho. **Faixas de deploy** cruzam o mapa: quando a área pisca, saia dali. Elas queimam você, mas também queimam os zumbis.
+Tudo vermelho. **Faixas de deploy** cruzam o mapa: quando a área pisca, saia dali. Elas queimam você, mas também queimam os inimigos.
 
-**Chefe: O Monolito Legado** — *"IDENTIFICATION DIVISION. PROGRAM-ID. MORTE."*
-Imóvel e blindado, recebe só 30% do dano até disparar seus lasers e abrir as portas. Ataque com tudo quando o núcleo vermelho aparecer.
+**Chefe: O Monolito Legado.** Imóvel e blindado, recebe só 30% do dano até disparar seus lasers e abrir as portas. Ataque com tudo quando o núcleo vermelho aparecer.
 
 <div align="center"><img src="docs/screenshots/boss-monolito.jpg" alt="O Monolito Legado no fim da sala de produção" width="720"></div>
 
@@ -228,39 +227,74 @@ Imóvel e blindado, recebe só 30% do dano até disparar seus lasers e abrir as 
 
 A sala fica branca, e o sangue ganha um contraste absurdo.
 
-**Chefe: O Pixel Morto** — *"1 x 1 px. é só isso. sempre foi só isso."*
-Começa minúsculo, teleportando pela sala, e cresce em três fases, enquanto corrompe o chão e dispara lasers giratórios.
+**Chefe: O Pixel Morto.** Começa minúsculo, teleportando pela sala, e cresce em três fases, enquanto corrompe o chão e dispara lasers giratórios.
 
 <div align="center"><img src="docs/screenshots/boss-pixel.jpg" alt="Fase final toda branca com o Pixel Morto" width="720"></div>
 
-## Pull requests (melhorias)
+## Patches (melhorias)
 
-Depois de cada wave, três pull requests aparecem, e você faz o merge de um. A combinação muda a cada partida.
+Depois de cada wave, o operador envia três patches, e você aplica um. A combinação muda a cada partida.
 
-<div align="center"><img src="docs/screenshots/pull-requests.jpg" alt="Tela de escolha entre três pull requests" width="720"></div>
+<div align="center"><img src="docs/screenshots/pull-requests.jpg" alt="Tela de escolha entre três patches" width="720"></div>
 
 | Tipo | Título | Efeito | Máx. |
 | --- | --- | --- | --- |
-| `feat` | dano++ | +25% de dano em todas as armas | — |
+| `feat` | privilégios elevados | +25% de dano em todas as armas | — |
 | `perf` | compilar com -O3 | +18% de cadência de tiro | — |
-| `perf` | remover o sleep(1000) | +12% de velocidade | 4 |
-| `fix` | tratar exceção | +30 de HP máximo e cura 30 | — |
+| `perf` | latência reduzida | +12% de velocidade | 4 |
+| `fix` | redundância | +30 de HP máximo e cura 30 | — |
 | `feat` | passagem por referência | Balas atravessam +1 inimigo | 4 |
 | `feat` | retry com backoff | Balas ricocheteiam +1 vez | 3 |
 | `feat` | paralelismo | +1 projétil por disparo | 3 |
-| `feat` | NaN | +15% de crítico, com dano x2,5 | 4 |
+| `feat` | ponto fraco | +15% de crítico, com dano x2,5 | 4 |
 | `feat` | exceção não tratada | +12% de chance de explodir ao matar | 4 |
-| `chore` | download more ram | +256 MB de RAM máxima e +50% de ganho | 3 |
+| `chore` | alocação extra | +256 MB de RAM máxima e +50% de ganho | 3 |
 | `refactor` | garbage collector | +1 HP a cada 4 abates | 3 |
-| `perf` | cache de dash | -25% de recarga do dash | 3 |
-| `feat` | merge conflict | O dash mói quem estiver na frente | 2 |
-| `chore` | npm install ímã | Atrai itens de muito mais longe | 2 |
-| `feat` | servidor em chamas | Tiros incendeiam o alvo | 2 |
-| `chore` | aumentar o buffer | +50% de munição máxima e recarga total | 2 |
-| `feat` | cron job | Um pixel afiado orbita e corta zumbis | 4 |
+| `perf` | resposta imediata | -25% de recarga do dash | 3 |
+| `feat` | colisão | O dash mói quem estiver na frente | 2 |
+| `chore` | coleta automática | Atrai itens de muito mais longe | 2 |
+| `feat` | superaquecimento | Tiros incendeiam o alvo | 2 |
+| `chore` | buffer ampliado | +50% de munição máxima e recarga total | 2 |
+| `feat` | cron job | Um pixel afiado orbita e corta inimigos | 4 |
 | `feat` | firewall | Quem te toca leva 40 de dano | 3 |
-| `fix` | backup da sexta | Revive uma vez com metade do HP | 1 |
-| `feat` | teclado mecânico | Golpe do teclado com +100% de dano | 2 |
+| `fix` | ponto de restauração | Revive uma vez com metade do HP | 1 |
+| `feat` | força bruta | Golpe de pé de cabra com +100% de dano | 2 |
+
+## Skins
+
+Escolha a roupa do seu `root` em **SKINS**, no menu principal. Quatro já vêm liberadas e seis são conquistadas jogando. O desbloqueio fica salvo, mesmo se você recomeçar o jogo.
+
+<div align="center"><img src="docs/screenshots/skins.jpg" alt="Tela de seleção de skins, com dez personagens e os bloqueados como silhuetas" width="720"></div>
+
+| Skin | Como liberar |
+| --- | --- |
+| root, estagiário, invasor, plantonista | Já vêm liberadas |
+| supervisor | Vencer o Supervisor |
+| espectro (troca de cor o tempo todo) | Vencer o Kernel Panic |
+| infectado | Vencer a Hidra de Microsserviços |
+| mainframe | Vencer o Monolito Legado |
+| pixel morto | Vencer o Pixel Morto |
+| açougueiro | Fazer uma sequência de 100 abates |
+
+As skins são só visuais, e cada uma tem o próprio rastro de dash.
+
+## Idiomas
+
+O jogo inteiro está em **português**, **inglês** e **espanhol**, incluindo história, logs, manual, respostas do terminal e até o texto pintado no chão. Na primeira vez, o idioma segue o do navegador. Para trocar, use `IDIOMA / LANGUAGE` no menu principal ou nas opções.
+
+Os comandos do terminal (`rm -rf`, `kill -9`...) são os mesmos em todos os idiomas.
+
+## Manual e dicas no jogo
+
+O jogo explica a si mesmo, e você pode desligar os cartões e as dicas em **OPÇÕES**:
+
+- **Manual:** disponível no menu e na pausa, traz fichas com stats e estratégia de cada inimigo, chefe, arma e comando, além de uma aba de dicas.
+- **Cartão de inimigo novo:** na primeira vez que um inimigo ou chefe aparece, o jogo pausa e mostra o que ele faz e como lidar com ele.
+- **Tela de morte:** mostra quem matou você e como evitar isso da próxima vez.
+- **Dicas de contexto:** avisam, por exemplo, para digitar `revert` quando o HP está baixo.
+- **Tela de fase:** cada fase começa com uma dica sobre o jogo.
+
+<div align="center"><img src="docs/screenshots/manual.jpg" alt="Manual do jogo mostrando a ficha do segfault, com stats e como lidar com ele" width="720"></div>
 
 ## Pontuação e sequências
 
@@ -268,17 +302,17 @@ Cada abate em sequência renova um timer de 3,5 segundos, e levar dano encurta e
 
 | Abates | Anúncio |
 | --- | --- |
-| 5 | HELLO WORLD |
-| 10 | LOOP INFINITO |
+| 5 | ENCERRADO |
+| 10 | EM CADEIA |
 | 20 | RECURSÃO |
 | 35 | STACK OVERFLOW |
 | 50 | KERNEL PANIC |
-| 75 | P = NP |
-| 100 | SINGULARIDADE |
-| 150 | SUDO DEUS |
-| 250 | ALGUÉM CHAMA O RH |
+| 75 | MEMÓRIA LIBERADA |
+| 100 | NENHUMA RESPOSTA |
+| 150 | ELES SENTEM ISSO? |
+| 250 | QUEM É VOCÊ? |
 
-O progresso, o recorde e as opções ficam salvos no `localStorage` do navegador. Não há servidor nem conta.
+O progresso, o recorde, as skins e as opções ficam salvos no `localStorage` do navegador. Não há servidor nem conta.
 
 ## Dicas de sobrevivência
 
@@ -320,6 +354,7 @@ flowchart LR
 | **Caminho até o jogador** | Um único campo de fluxo (BFS sobre os tiles) é recalculado cerca de 4 vezes por segundo e compartilhado por toda a horda. |
 | **Colisões** | Um hash espacial limita as comparações entre balas e inimigos, e entre os próprios inimigos, aos vizinhos próximos. |
 | **Luz** | Luzes aditivas são somadas em um canvas separado, aplicado em `multiply` sobre o mundo. Tiros e olhos dos zumbis são desenhados depois, para brilhar no escuro. |
+| **Idiomas** | Os textos ficam em `i18n.ts`, e os demais idiomas são tipados a partir do português: uma tradução faltando quebra o build. |
 | **Áudio** | Web Audio do início ao fim: efeitos com osciladores e ruído filtrado, mais um sequenciador com trilhas diferentes por fase. |
 | **CRT** | Um fragment shader aplica curvatura, scanlines, bloom, aberração cromática e glitches. Sem WebGL, o jogo continua funcionando sem esse efeito. |
 | **Arenas** | O layout é gerado a cada partida: mesas e salas, corredores de racks, cavernas com autômato celular. Uma checagem de conectividade evita bolsões isolados. |
@@ -338,7 +373,9 @@ dead-pixel/
 │   │   ├── input.ts        # Teclado e mouse
 │   │   └── util.ts         # Matemática e helpers
 │   └── game/
-│       ├── data.ts         # ⭐ Inimigos, armas, perks e fases: balanceie aqui
+│       ├── data.ts         # ⭐ Inimigos, armas, perks, skins e fases: balanceie aqui
+│       ├── i18n.ts         # Todos os textos, em português, inglês e espanhol
+│       ├── screens.ts      # Manual, cartões de inimigo e seleção de skin
 │       ├── game.ts         # Estado, waves, save e progressão
 │       ├── combat.ts       # Jogador, projéteis, dano e explosões
 │       ├── enemies.ts      # IA de inimigos e chefes
@@ -401,9 +438,9 @@ Ideias, bugs e pull requests são bem-vindos. Veja o [CONTRIBUTING.md](CONTRIBUT
 
 ## Licença
 
-[MIT](LICENSE). Faça backup.
+[MIT](LICENSE).
 
 <div align="center">
   <br>
-  <sub>Nunca faça deploy na sexta.</sub>
+  <sub>Não olhe para o pixel.</sub>
 </div>
