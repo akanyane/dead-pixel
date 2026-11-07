@@ -20,7 +20,7 @@ const game = new Game(input);
 presenter.crtEnabled = game.crtOn;
 
 input.onFirstGesture = () => game.audio.init();
-// abates somados não podem se perder se a aba for fechada no meio de uma fase
+// total kills must not be lost if the tab is closed in the middle of a level
 window.addEventListener('pagehide', () => game.saveProgress());
 
 const params = new URLSearchParams(location.search);
@@ -34,7 +34,7 @@ if (import.meta.env.DEV) {
 const drips = Array.from({ length: 34 }, () => ({ x: Math.floor(rand(92, 388)), len: rand(0, 18), speed: rand(1, 8), w: Math.random() < 0.3 ? 2 : 1 }));
 const parade = Array.from({ length: 9 }, (_, i) => ({ x: rand(-40, W + 40), s: i % 4, speed: rand(8, 20), t: rand(5) }));
 
-/** `adjust` deixa a linha responder às setas para os lados, como nos volumes. */
+/** `adjust` lets a row respond to left and right arrows, like the volume rows. */
 type MenuItem = { label: string; act: () => void; adjust?: (d: number) => void; dim?: boolean; desc?: string[] };
 
 function goreName() {
@@ -54,7 +54,7 @@ function cycleLang() {
 
 const onOff = (v: boolean) => (v ? T().options.on : T().options.off);
 
-/** Barrinha de volume em texto, com a fonte do jogo. */
+/** Text volume bar, drawn with the game font. */
 const volBar = (v: number) => `${'|'.repeat(v)}${'.'.repeat(10 - v)} ${v * 10}%`;
 
 function setVolume(kind: 'musicVol' | 'sfxVol', v: number) {
@@ -74,7 +74,7 @@ function openControls() {
   game.setState('controls');
 }
 
-/** Copia o resultado do arcade para a área de transferência e avisa na tela. */
+/** Copies the arcade result to the clipboard and shows a notice. */
 function copyResult() {
   const text = game.shareText();
   const done = () => game.toasts.push({ text: T().arcade.copied, t: 2 });
@@ -87,7 +87,7 @@ function openOptions(from: 'menu' | 'pause') {
   game.setState('options');
 }
 
-// O rótulo de idioma é bilíngue de propósito: precisa ser achado por quem não lê o idioma atual.
+// The language label is bilingual on purpose: people who cannot read the current language must still find it.
 const langLabel = () => `IDIOMA / LANGUAGE: ${T().langName}`;
 
 function menuItems(): MenuItem[] {
@@ -106,7 +106,7 @@ function menuItems(): MenuItem[] {
   return items;
 }
 
-/** Submenu de JOGAR: as dificuldades da história, o modo infinito e a run diária. */
+/** PLAY submenu: story difficulties, endless mode and the daily run. */
 function playItems(): MenuItem[] {
   const t = T();
   const m = t.modes;
@@ -173,7 +173,7 @@ function pauseItems(): MenuItem[] {
 let lastMx = -1;
 let lastMy = -1;
 
-/** Navegação comum dos menus: teclado, hover e clique. Retorna o índice selecionado. */
+/** Shared menu navigation: keyboard, hover and click. Returns the selected index. */
 function runList(items: MenuItem[], idx: number, y: number, rowH: number, halfW: number): number {
   const n = items.length;
   let i = Math.min(idx, n - 1);
@@ -187,7 +187,7 @@ function runList(items: MenuItem[], idx: number, y: number, rowH: number, halfW:
   }
   const row = Math.floor((input.my - y + 2) / rowH);
   const inside = row >= 0 && row < n && Math.abs(input.mx - W / 2) < halfW;
-  // com controle, a posição parada do mouse não pode roubar a seleção
+  // with a gamepad, a resting mouse position must not steal the selection
   if (inside && !input.usingPad && (input.mx !== lastMx || input.my !== lastMy)) i = row;
   lastMx = input.mx;
   lastMy = input.my;
@@ -241,14 +241,14 @@ function renderControls() {
   c.gamepad.forEach((l, i) => drawText(ctx, l, W / 2, 210 + i * 11, '#8fa3bf', { align: 'center' }));
 }
 
-/** Dica de controles certa para o aparelho em uso. */
+/** Controls hint for the device in use. */
 function controlsHint() {
   if (input.touchActive) return T().touch.hint;
   if (input.usingPad) return T().pad.hint;
   return T().menu.controls;
 }
 
-/** Analógicos e botões na tela, só quando o jogo está sendo jogado por toque. */
+/** On-screen sticks and buttons, only while playing by touch. */
 function renderTouchControls() {
   const tt = T().touch;
   const labels: Record<string, string> = { dash: tt.dash, melee: tt.melee, weapon: tt.weapon, terminal: '>_', pause: 'II' };
@@ -290,11 +290,11 @@ let runnerX = 60;
 function renderMenu(dt: number) {
   ctx.fillStyle = '#050507';
   ctx.fillRect(0, 0, W, H);
-  // manchas de fundo
+  // background stains
   ctx.fillStyle = '#0d0a0d';
   for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
 
-  // horda ao fundo
+  // horde in the background
   for (const z of parade) {
     z.x += z.speed * dt;
     z.t += dt;
@@ -304,14 +304,14 @@ function renderMenu(dt: number) {
     drawSprite(ctx, SPR.zombies[z.s].walk[fr], z.x, H - 8);
     ctx.globalAlpha = 1;
   }
-  // você, com a skin escolhida, fugindo na frente da horda
+  // you, in the chosen skin, running ahead of the horde
   runnerX += 30 * dt;
   if (runnerX > W + 30) runnerX = -30;
   drawSprite(ctx, skinSprites(game.progress.skin, game.time)[1 + (Math.floor(game.time * 8) % 2)], runnerX, H - 8);
   ctx.fillStyle = '#2a0408';
   ctx.fillRect(0, H - 8, W, 8);
 
-  // título com gotejamento
+  // dripping title
   const title = 'DEAD PIXEL';
   const ty = 34;
   const gl = Math.random() < 0.06 ? rand(-3, 3) : 0;
@@ -329,7 +329,7 @@ function renderMenu(dt: number) {
     ctx.fillStyle = '#e8222a';
     ctx.fillRect(d.x, ty + 28 + Math.floor(d.len), d.w, 2);
   }
-  // o próprio pixel morto, no meio do título
+  // the dead pixel itself, in the middle of the title
   ctx.fillStyle = '#000';
   ctx.fillRect(W / 2 - 1, ty + 12, 3, 3);
 
@@ -394,7 +394,7 @@ function crosshair() {
   ctx.fillRect(x, y, 1, 1);
 }
 
-// ---------- Máquina de estados ----------
+// ---------- State machine ----------
 
 function handleInput(dt: number) {
   switch (game.state) {
@@ -465,7 +465,7 @@ function handleInput(dt: number) {
         const x = sx + i * (cw + gap);
         if (input.mx >= x && input.mx < x + cw && input.my >= 62 && input.my < 178) hover = i;
       }
-      // o mouse só muda a seleção quando se mexe, para não brigar com teclado e controle
+      // the mouse only changes the selection when it moves, so it does not fight the keyboard and gamepad
       if (hover >= 0 && !input.usingPad && (input.mx !== lastMx || input.my !== lastMy)) game.perkHover = hover;
       lastMx = input.mx;
       lastMy = input.my;
@@ -498,7 +498,7 @@ function handleInput(dt: number) {
       }
       break;
     case 'dead': {
-      // toque: a linha de baixo volta ao menu, a de cópia copia, o resto tenta de novo
+      // touch: the bottom line goes to the menu, the copy line copies, anywhere else retries
       const tapMenu = input.leftPressed && input.my >= 206;
       const tapCopy = input.leftPressed && game.isArcade() && input.my >= 192 && input.my < 206;
       if (input.hit('KeyM', 'Escape') || tapMenu) game.quitToMenu();

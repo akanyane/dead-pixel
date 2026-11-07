@@ -19,7 +19,7 @@ export function shuffle<T>(arr: T[]): T[] {
   return arr;
 }
 
-/** Gerador pseudoaleatório pequeno e determinístico (mulberry32). */
+/** Small deterministic pseudo-random generator (mulberry32). */
 export function seeded(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -32,9 +32,9 @@ export function seeded(seed: number): () => number {
 }
 
 /**
- * Roda `fn` com Math.random trocado por um gerador com seed. É assim que a run diária
- * gera o mesmo mapa, as mesmas waves e os mesmos patches para todo mundo, sem precisar
- * passar um gerador por todo o código de geração.
+ * Runs `fn` with Math.random swapped for a seeded generator. This is how the daily run
+ * produces the same map, waves and patches for everyone without threading a generator
+ * through all of the generation code.
  */
 export function withSeed<T>(seed: number, fn: () => T): T {
   const original = Math.random;
@@ -46,14 +46,14 @@ export function withSeed<T>(seed: number, fn: () => T): T {
   }
 }
 
-/** Transforma um texto (como a data do dia) em uma seed de 32 bits. */
+/** Turns a string (such as today's date) into a 32-bit seed. */
 export function hashSeed(text: string): number {
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
   return h >>> 0;
 }
 
-/** Distância de um ponto até um segmento. Usada em beams e railgun. */
+/** Distance from a point to a segment. Used by beams and the railgun. */
 export function distToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
   const dx = bx - ax;
   const dy = by - ay;
@@ -84,7 +84,7 @@ export function storageSet(key: string, value: string) {
   try {
     localStorage.setItem(key, value);
   } catch {
-    /* modo privado: o jogo segue sem salvar */
+    /* private mode: the game keeps going without saving */
   }
 }
 
@@ -92,6 +92,6 @@ export function storageDel(key: string) {
   try {
     localStorage.removeItem(key);
   } catch {
-    /* idem */
+    /* same as above */
   }
 }

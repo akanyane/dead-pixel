@@ -1,6 +1,6 @@
 import { H, W } from './util';
 
-/** Ações de jogo que podem ser remapeadas. Mira, tiro e troca de arma ficam no mouse e nos números. */
+/** Game actions that can be remapped. Aim, fire and weapon switching stay on the mouse and number keys. */
 export type Action = 'up' | 'down' | 'left' | 'right' | 'dash' | 'melee' | 'terminal' | 'pause';
 export const ACTIONS: Action[] = ['up', 'down', 'left', 'right', 'dash', 'melee', 'terminal', 'pause'];
 
@@ -15,13 +15,13 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   pause: ['Escape', 'KeyP'],
 };
 
-/** Botões de controle no layout padrão do navegador (Xbox: A B X Y). */
+/** Gamepad buttons in the browser standard layout (Xbox: A B X Y). */
 const PAD_BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'LS', 'RS', 'Up', 'Down', 'Left', 'Right'] as const;
 type PadButton = (typeof PAD_BUTTONS)[number];
 const PAD_ACTIONS: Partial<Record<Action, PadButton[]>> = { dash: ['A', 'LT'], melee: ['X'], terminal: ['Y'], pause: ['Start'] };
 const DEADZONE = 0.25;
 
-/** Áreas dos botões de toque, em coordenadas da tela de 480x270. */
+/** Touch button areas, in 480x270 screen coordinates. */
 export const TOUCH_BUTTONS: { id: 'dash' | 'melee' | 'terminal' | 'pause' | 'weapon'; x: number; y: number; r: number }[] = [
   { id: 'dash', x: W - 36, y: H - 50, r: 17 },
   { id: 'melee', x: W - 78, y: H - 34, r: 13 },
@@ -38,7 +38,7 @@ interface Stick {
   y: number;
 }
 
-/** Nome curto de uma tecla, para mostrar na tela de controles. */
+/** Short key name, shown on the controls screen. */
 export function keyLabel(code: string): string {
   if (code.startsWith('Key')) return code.slice(3);
   if (code.startsWith('Digit')) return code.slice(5);
@@ -49,9 +49,9 @@ export function keyLabel(code: string): string {
 }
 
 /**
- * Teclado, mouse, controle e toque. O terminal do jogo consome `typed` em vez das
- * teclas de movimento. Controle e toque viram as mesmas ações do teclado, e nos menus
- * o controle aperta setas, Enter e Esc virtuais para reaproveitar a navegação existente.
+ * Keyboard, mouse, gamepad and touch. The in-game terminal reads `typed` instead of
+ * the movement keys. Gamepad and touch map to the same actions as the keyboard, and in
+ * menus the gamepad presses virtual arrows, Enter and Esc to reuse the existing navigation.
  */
 export class Input {
   private down = new Set<string>();
@@ -66,13 +66,13 @@ export class Input {
   wheel = 0;
   onFirstGesture: (() => void) | null = null;
   bindings: Record<Action, string[]> = structuredClone(DEFAULT_BINDINGS);
-  /** Última tecla apertada neste frame, usada para remapear. */
+  /** Last key pressed this frame, used for remapping. */
   lastCode: string | null = null;
 
-  /** Ligado pelo loop principal quando a tela atual é um menu (ou o terminal está aberto). */
+  /** Set by the main loop when the current screen is a menu (or the terminal is open). */
   uiMode = true;
 
-  // controle
+  // gamepad
   usingPad = false;
   private padDown = new Set<PadButton>();
   private padPressed = new Set<PadButton>();
@@ -81,13 +81,13 @@ export class Input {
   private navT = 0;
   private navDir = '';
 
-  // toque
+  // touch
   touchActive = false;
   moveStick: Stick | null = null;
   aimStick: Stick | null = null;
   private touchButtons = new Set<string>();
 
-  /** Direção de mira vinda do controle ou do toque; null quando a mira é o mouse. */
+  /** Aim direction from the gamepad or touch; null when aiming with the mouse. */
   aimDir: number | null = null;
 
   constructor(private el: HTMLCanvasElement) {
@@ -118,7 +118,7 @@ export class Input {
       this.track(e);
     });
     window.addEventListener('mousedown', (e) => {
-      // navegadores de celular simulam mouse depois de um toque: ignore
+      // mobile browsers emulate mouse events after a touch: ignore them
       if (this.touchActive) return;
       this.gesture();
       this.usingPad = false;
@@ -173,7 +173,7 @@ export class Input {
     for (const t of Array.from(e.changedTouches)) {
       const p = this.toScreen(t.clientX, t.clientY);
       if (this.uiMode) {
-        // nos menus, um toque é um clique
+        // in menus, a tap is a click
         this.mx = p.x;
         this.my = p.y;
         if (kind === 'start') {
@@ -212,7 +212,7 @@ export class Input {
     }
   }
 
-  /** Lê o controle. Chamado uma vez por frame, antes do update do jogo. */
+  /** Reads the gamepad. Called once per frame, before the game update. */
   poll(dt: number) {
     this.padPressed.clear();
     const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
@@ -251,7 +251,7 @@ export class Input {
     }
 
     if (this.uiMode && this.usingPad) {
-      // menus: direcional e analógico viram setas, com repetição ao segurar
+      // menus: d-pad and stick become arrows, repeating while held
       const dir = this.padMove.y < -0.5 ? 'ArrowUp' : this.padMove.y > 0.5 ? 'ArrowDown' : this.padMove.x < -0.5 ? 'ArrowLeft' : this.padMove.x > 0.5 ? 'ArrowRight' : '';
       if (dir !== this.navDir) {
         this.navDir = dir;
@@ -271,7 +271,7 @@ export class Input {
     }
   }
 
-  /** Aperta uma tecla de mentira, vinda do controle. */
+  /** Presses a virtual key on behalf of the gamepad. */
   private virtual(code: string) {
     this.pressed.add(code);
     if (code === 'Enter' || code === 'Escape' || code === 'ArrowUp' || code === 'ArrowDown') this.typed.push(code);
@@ -297,7 +297,7 @@ export class Input {
     return this.hit(...this.bindings[a]) || (PAD_ACTIONS[a]?.some((b) => this.padPressed.has(b)) ?? false) || this.touchButtons.has(a);
   }
 
-  /** Vetor de movimento somando teclado, controle e toque, com tamanho no máximo 1. */
+  /** Movement vector combining keyboard, gamepad and touch, with length at most 1. */
   moveVec(): [number, number] {
     let x = (this.actHeld('right') ? 1 : 0) - (this.actHeld('left') ? 1 : 0) + this.padMove.x;
     let y = (this.actHeld('down') ? 1 : 0) - (this.actHeld('up') ? 1 : 0) + this.padMove.y;
@@ -320,19 +320,19 @@ export class Input {
     return [x, y];
   }
 
-  /** Tiro contínuo: mouse, gatilho do controle ou o analógico de mira na tela de toque. */
+  /** Continuous fire: mouse, gamepad trigger or the touch aim stick. */
   firing() {
     return this.left || this.padRT > 0.3 || this.padDown.has('RT') || this.aimStick !== null;
   }
 
-  /** Troca uma ação para uma tecla nova. A tecla sai de qualquer outra ação que já a usasse. */
+  /** Moves an action to a new key. The key is removed from any other action that used it. */
   rebind(a: Action, code: string) {
     const previous = this.bindings[a][0];
     for (const other of Object.keys(this.bindings) as Action[]) this.bindings[other] = this.bindings[other].filter((c) => c !== code);
     const used = (c: string) => Object.values(this.bindings).some((l) => l.includes(c));
     const rest = DEFAULT_BINDINGS[a].slice(1).filter((c) => c !== code && !used(c));
     this.bindings[a] = [code, ...rest];
-    // nenhuma ação pode ficar sem tecla: quem perdeu a única tecla fica com a antiga desta ação
+    // no action may end up without a key: one that lost its only key gets this action's old one
     for (const other of Object.keys(this.bindings) as Action[]) {
       if (this.bindings[other].length) continue;
       const free = DEFAULT_BINDINGS[other].filter((c) => !used(c));
@@ -344,7 +344,7 @@ export class Input {
     this.bindings = structuredClone(DEFAULT_BINDINGS);
   }
 
-  /** Chamado ao fim de cada frame. */
+  /** Called at the end of every frame. */
   endFrame() {
     this.pressed.clear();
     this.typed.length = 0;

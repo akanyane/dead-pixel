@@ -1,6 +1,6 @@
-// Fonte bitmap 5x7 (com descendentes) desenhada pixel a pixel, para o texto
-// continuar nítido na resolução interna de 480x270. Acentos do português são
-// compostos a partir da letra base.
+// 5x7 bitmap font (with descenders) drawn pixel by pixel, so text stays
+// crisp at the internal 480x270 resolution. Portuguese and Spanish accents
+// are composed from the base letter.
 
 const RAW =
   '0000000000|00005F0000|0007000700|147F147F14|242A7F2A12|2313086462|3649562050|0008070300|001C224100|0041221C00|' +
@@ -21,7 +21,7 @@ RAW.split('|').forEach((hex, i) => {
   GLYPHS.set(String.fromCharCode(32 + i), cols);
 });
 
-// Pontuação do espanhol: versões invertidas de ! e ?
+// Spanish punctuation: inverted versions of ! and ?
 GLYPHS.set('\u00a1', [0x00, 0x00, 0x7d, 0x00, 0x00]);
 GLYPHS.set('\u00bf', [0x20, 0x40, 0x4d, 0x48, 0x30]);
 
@@ -94,7 +94,7 @@ export function drawText(ctx: CanvasRenderingContext2D, s: string, x: number, y:
   ctx.globalAlpha = prevAlpha;
 }
 
-/** Quebra uma string em linhas para caber em `max` caracteres. */
+/** Wraps a string into lines of at most `max` characters. */
 export function wrap(s: string, max: number): string[] {
   const out: string[] = [];
   let line = '';

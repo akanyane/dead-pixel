@@ -164,7 +164,7 @@ export const LEVELS: LevelDef[] = [
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'hardcore';
 export const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard', 'hardcore'];
 
-/** Multiplicadores por dificuldade: HP dos inimigos, dano que eles causam, tamanho das waves e pontuação. */
+/** Per-difficulty multipliers: enemy HP, damage they deal, wave size and score. */
 export const DIFFICULTY: Record<Difficulty, { hp: number; dmg: number; count: number; score: number }> = {
   easy: { hp: 0.75, dmg: 0.6, count: 0.8, score: 0.5 },
   normal: { hp: 1, dmg: 1, count: 1, score: 1 },
@@ -172,11 +172,11 @@ export const DIFFICULTY: Record<Difficulty, { hp: number; dmg: number; count: nu
   hardcore: { hp: 1.25, dmg: 1.35, count: 1.2, score: 2 },
 };
 
-/** Modo arcade (infinito e diário): 4 waves e um chefe por arena, com os chefes em ciclo. */
+/** Arcade mode (endless and daily): 4 waves and a boss per arena, cycling through the bosses. */
 export const ARCADE_WAVES = 4;
 export const ARCADE_BOSSES: EnemyKind[] = ['scrum', 'kernel', 'hydra', 'monolith', 'pixel'];
 
-/** Inimigos que podem aparecer no arcade, a partir de qual arena e com qual peso no sorteio. */
+/** Enemies that can appear in arcade mode, from which arena on, and their draw weight. */
 export const ARCADE_POOL: { kind: EnemyKind; from: number; weight: number }[] = [
   { kind: 'walker', from: 0, weight: 10 },
   { kind: 'bug', from: 0, weight: 6 },
@@ -188,22 +188,22 @@ export const ARCADE_POOL: { kind: EnemyKind; from: number; weight: number }[] = 
   { kind: 'stack', from: 2, weight: 0.6 },
 ];
 
-/** Limites de sequência. Os nomes dos anúncios ficam em i18n.ts, na mesma ordem. */
+/** Streak thresholds. The announcement names live in i18n.ts, in the same order. */
 export const STREAKS = [5, 10, 20, 35, 50, 75, 100, 150, 250];
 
 export const KILL_WORDS = ['SIGKILL', 'exit(0)', 'core dumped', 'free()', 'EOF', '0xDEAD'];
 
-/** Quantas execuções aconteceram antes da primeira partida do jogador. */
+/** How many runs happened before the player's first game. */
 export const RUN_BASE = 37;
 
-/** Nomes que aparecem no log de abates conforme a verdade vem à tona. */
+/** Names that show up in the kill feed as the truth comes out. */
 export const VICTIM_NAMES = ['M. Duarte', 'T. Almeida', 'R. Okafor', 'L. Santos', 'J. Novak', 'A. Ferreira', 'C. Ito', 'P. Moreau', 'D. Nunes', 'S. Haddad', 'I. Rocha', 'B. Lund', 'E. Vidal', 'K. Mendes', 'N. Castro', 'O. Pereira'];
 
 export type SkinUnlock = { boss: EnemyKind } | { streak: number };
 
 export interface SkinDef {
   id: string;
-  /** Sobrescreve as cores do sprite do jogador: capuz, pele, óculos, roupa, detalhes, calça e sapato. */
+  /** Overrides the player sprite colors: hood, skin, glasses, top, details, trousers and shoes. */
   pal: Partial<Record<'H' | 'S' | 'C' | 'T' | 'L' | 'W' | 'B' | 'K', string>>;
   trail: [string, string, string];
   unlock?: SkinUnlock;

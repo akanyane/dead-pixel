@@ -61,7 +61,7 @@ void main(){
   gl_FragColor = vec4(c,1.);
 }`;
 
-/** Apresenta o canvas interno na tela, com pós-processamento CRT quando há WebGL. */
+/** Presents the internal canvas on screen, with CRT post-processing when WebGL is available. */
 export class Presenter {
   private gl: WebGLRenderingContext | null = null;
   private ctx2d: CanvasRenderingContext2D | null = null;

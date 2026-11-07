@@ -3,9 +3,9 @@ import type { Game } from './game';
 
 export interface AchievementDef {
   id: string;
-  /** Fica como "???" até ser conquistada, para não entregar a história. */
+  /** Shows as "???" until unlocked, so it does not spoil the story. */
   hidden?: boolean;
-  /** Progresso [atual, meta] das conquistas que dependem só de números salvos. */
+  /** Progress [current, goal] for achievements that depend only on saved numbers. */
   stat?: (g: Game) => [number, number];
 }
 

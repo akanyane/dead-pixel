@@ -11,7 +11,7 @@ export interface Command {
   run: (g: Game) => string;
 }
 
-// Os comandos são os mesmos em todos os idiomas; só a ajuda e as respostas mudam.
+// Commands are the same in every language; only the help and replies change.
 export const COMMANDS: Command[] = [
   {
     name: 'ping', aliases: ['ping -c 1', 'ping localhost'], cost: 60,
@@ -55,13 +55,13 @@ export const COMMANDS: Command[] = [
   },
 ];
 
-/** Posição do terminal e da lista de comandos na tela, usada pelo desenho e pelos cliques. */
+/** Terminal and command list position on screen, shared by drawing and clicks. */
 export const TERM_BOX = { x: 8, w: W - 16, h: 102, y: H - 15 - 102, listX: 8 + 354 + 6, row: 10 };
 export const commandRowY = (i: number) => TERM_BOX.y + 12 + i * TERM_BOX.row;
 
 export class Terminal {
   open = false;
-  /** Comando destacado quando o terminal é usado com controle. */
+  /** Highlighted command when the terminal is used with a gamepad. */
   sel = 0;
   line = '';
   lines: { text: string; color: string }[] = [];
@@ -155,7 +155,7 @@ export class Terminal {
     const g = this.g;
     this.cursorT += dt;
     const input = g.input;
-    // controle: sem teclado, escolhe-se o comando na lista
+    // gamepad: with no keyboard, the command is picked from the list
     if (input.usingPad) {
       if (input.hit('ArrowDown')) this.sel = (this.sel + 1) % COMMANDS.length;
       if (input.hit('ArrowUp')) this.sel = (this.sel - 1 + COMMANDS.length) % COMMANDS.length;
@@ -164,7 +164,7 @@ export class Terminal {
       if (input.hit('ArrowDown', 'ArrowUp')) g.audio.key();
       return;
     }
-    // mouse e toque: clicar num comando executa, clicar fora fecha
+    // mouse and touch: clicking a command runs it, clicking outside closes
     if (input.leftPressed) {
       const row = COMMANDS.findIndex((_, i) => input.my >= commandRowY(i) - 1 && input.my < commandRowY(i) + TERM_BOX.row - 1);
       if (input.mx >= TERM_BOX.listX - 3 && row >= 0) {

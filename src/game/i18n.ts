@@ -1,5 +1,5 @@
-// Todos os textos do jogo. `en` e `es` são tipados a partir de `pt`, então uma
-// tradução faltando quebra o build em vez de aparecer em branco na tela.
+// Every string in the game. `en` and `es` share the same type as `pt`, so a
+// missing translation breaks the build instead of showing up blank on screen.
 import type { Action } from '../core/input';
 import type { Difficulty, EnemyKind, WeaponId } from './data';
 
@@ -25,7 +25,7 @@ interface LevelText {
   story: string[];
   bossLines: [string, string];
   notes: string[];
-  /** Log encontrado ao vencer o chefe. {run} e {prev} viram os números de execução. */
+  /** Log found after beating the boss. {run} and {prev} become run numbers. */
   recovered: string[];
 }
 
@@ -73,7 +73,7 @@ interface Strings {
     forkLimit: string;
     forkOk: (n: number, pid: number) => string;
     outputs: Record<'ping' | 'overclock' | 'revert' | 'kill' | 'sudo' | 'rm', string>;
-    /** Comandos sem efeito em jogo: pistas da história para quem investigar. */
+    /** Commands with no gameplay effect: story clues for whoever investigates. */
     lore: Record<string, string[]>;
   };
   commands: Record<string, { help: string; long: string }>;
@@ -112,7 +112,7 @@ interface Strings {
     controls: string[];
   };
   ending: {
-    /** Páginas do final, mostradas uma de cada vez. */
+    /** Ending pages, shown one at a time. */
     pages: (run: number) => string[][];
     next: string;
     title: string;
@@ -1470,5 +1470,5 @@ export function setLang(l: Lang) {
 
 export const getLang = () => current;
 
-/** Textos do idioma atual. */
+/** Strings for the current language. */
 export const T = () => TABLE[current];

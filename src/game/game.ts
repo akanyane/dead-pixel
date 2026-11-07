@@ -11,7 +11,7 @@ import { updateFx, type Gib, type Particle } from './fx';
 import { GameMap, buildMap } from './map';
 import { Terminal } from './terminal';
 
-/** O que causou o último dano no jogador, para a tela de morte explicar como evitar. */
+/** What last hurt the player, so the death screen can explain how to avoid it. */
 export type KillerId = EnemyKind | 'deploy' | 'corrupt' | 'beam';
 
 export interface Progress {
@@ -237,7 +237,7 @@ export interface Player {
 
 export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log' | 'achievements' | 'controls';
 
-/** História, modo infinito ou run diária. Os dois últimos são o "arcade": sem história e com uma vida só. */
+/** Story, endless or daily run. The last two are "arcade": no story and a single life. */
 export type Mode = 'story' | 'endless' | 'daily';
 
 interface ArcadeBest {
@@ -267,7 +267,7 @@ const OPTS_KEY = 'dead-pixel-opts-v1';
 const PROGRESS_KEY = 'dead-pixel-progress-v1';
 const ARCADE_KEY = 'dead-pixel-arcade-v1';
 
-/** Data de hoje em UTC: a run diária é a mesma no mundo todo. */
+/** Today's date in UTC: the daily run is the same worldwide. */
 export const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export class Game {
@@ -284,7 +284,7 @@ export class Game {
   difficulty: Difficulty = 'normal';
   arcadeSeed = 0;
   arcadeStage = 0;
-  /** Número da wave atual no arcade, contando desde o começo da run. */
+  /** Current arcade wave number, counted from the start of the run. */
   arcadeWave = 0;
   dailyDate = '';
   arcadeBest: ArcadeBest = { endless: { wave: 0, score: 0 }, daily: { date: '', wave: 0, score: 0 } };
@@ -366,7 +366,7 @@ export class Game {
 
   goreLevel = 1.2;
   crtOn = true;
-  /** Volumes em passos de 0 a 10. */
+  /** Volumes in steps from 0 to 10. */
   musicVol = 7;
   sfxVol = 10;
   tipsOn = true;
@@ -420,7 +420,7 @@ export class Game {
       setLang(o.lang && LANGS.includes(o.lang) ? o.lang : detectLang());
       if (o.gore !== undefined) this.goreLevel = o.gore;
       if (o.crt !== undefined) this.crtOn = o.crt;
-      // saves antigos só tinham música ligada ou desligada
+      // old saves only had music on or off
       if (o.music === false) this.musicVol = 0;
       if (o.musicVol !== undefined) this.musicVol = clamp(Math.round(o.musicVol), 0, 10);
       if (o.sfxVol !== undefined) this.sfxVol = clamp(Math.round(o.sfxVol), 0, 10);
@@ -430,14 +430,14 @@ export class Game {
     try {
       this.arcadeBest = { ...this.arcadeBest, ...(JSON.parse(storageGet(ARCADE_KEY) ?? '{}') as Partial<ArcadeBest>) };
     } catch {
-      /* sem recordes de arcade ainda */
+      /* no arcade records yet */
     }
     try {
       this.progress = { ...this.progress, ...(JSON.parse(storageGet(PROGRESS_KEY) ?? '{}') as Partial<Progress>) };
     } catch {
-      /* progresso novo */
+      /* fresh progress */
     }
-    // quem já jogou recebe o que já cumpriu, sem uma chuva de avisos
+    // returning players get what they already earned, without a flood of notices
     this.checkAchievements(true);
     this.audio.setVolumes(this.musicVol / 10, this.sfxVol / 10);
     this.map = buildMap('office');
@@ -460,7 +460,7 @@ export class Game {
     };
   }
 
-  /** Número da execução atual: a primeira partida já começa com várias anteriores. */
+  /** Current run number: the first game already starts after several earlier runs. */
   run() {
     return RUN_BASE + 1 + this.progress.runs;
   }
@@ -491,7 +491,7 @@ export class Game {
     this.saveProgress();
   }
 
-  /** Confere as conquistas que dependem só de números salvos. */
+  /** Checks the achievements that depend only on saved numbers. */
   checkAchievements(silent = false) {
     for (const a of ACHIEVEMENTS) {
       if (a.stat && a.id !== PLATINUM && !this.progress.achievements.includes(a.id)) {
@@ -501,7 +501,7 @@ export class Game {
     }
   }
 
-  /** Avisa uma única vez cada skin que acabou de ser liberada. */
+  /** Announces each newly unlocked skin exactly once. */
   private checkUnlocks() {
     for (const s of SKINS) {
       if (s.unlock && this.isSkinUnlocked(s) && !this.progress.notified.includes(s.id)) {
@@ -513,7 +513,7 @@ export class Game {
     this.saveProgress();
   }
 
-  /** Dica de contexto: no máximo uma vez por fase, e só com as dicas ligadas. */
+  /** Context hint: at most once per level, and only with tips turned on. */
   hint(id: string, text: string) {
     if (!this.tipsOn || this.hintsShown.has(id)) return;
     this.hintsShown.add(id);
@@ -526,7 +526,7 @@ export class Game {
     if (this.introQueue.length) this.setState('intro');
   }
 
-  /** Fecha o cartão atual. Quando acaba a fila, o jogo continua de onde estava. */
+  /** Closes the current card. When the queue is empty, the game resumes where it was. */
   nextIntro() {
     const k = this.introQueue.shift();
     if (k && !this.progress.seen.includes(k)) this.progress.seen.push(k);
@@ -545,18 +545,18 @@ export class Game {
     return this.mode !== 'story';
   }
 
-  /** Multiplicadores da dificuldade atual. O arcade é sempre no normal, para os recordes serem comparáveis. */
+  /** Current difficulty multipliers. Arcade always uses normal, so records stay comparable. */
   diff() {
     return DIFFICULTY[this.mode === 'story' ? this.difficulty : 'normal'];
   }
 
-  /** HP dos inimigos comuns: sobe por fase na história e por wave no arcade. */
+  /** Regular enemy HP: grows per level in the story and per wave in arcade mode. */
   enemyHpScale() {
     const base = this.isArcade() ? 1 + (this.arcadeWave - 1) * 0.06 : 1 + this.levelIdx * 0.16;
     return base * this.diff().hp;
   }
 
-  /** HP dos chefes: no arcade, cada volta completa pelos 5 chefes deixa todos bem mais fortes. */
+  /** Boss HP: in arcade mode, every full loop through the 5 bosses makes them much stronger. */
   bossHpMul() {
     const loop = this.isArcade() ? Math.floor(this.arcadeStage / ARCADE_BOSSES.length) : 0;
     return (1 + loop * 0.8) * this.diff().hp;
@@ -584,7 +584,7 @@ export class Game {
     this.startLevel(0);
   }
 
-  /** Começa uma run de arcade. A diária usa a data como seed; a infinita, uma seed nova a cada vez. */
+  /** Starts an arcade run. The daily run seeds from the date; endless uses a new seed each time. */
   startArcade(mode: 'endless' | 'daily') {
     this.mode = mode;
     this.dailyDate = todayUTC();
@@ -596,7 +596,7 @@ export class Game {
     this.startStage(0);
   }
 
-  /** Uma arena do arcade: tema e chefe em ciclo, com waves geradas a partir da seed. */
+  /** An arcade arena: theme and boss cycle, with waves generated from the seed. */
   private startStage(stage: number) {
     this.arcadeStage = stage;
     const i = stage % LEVELS.length;
@@ -629,14 +629,14 @@ export class Game {
     return waves;
   }
 
-  /** Texto do resultado para colar em qualquer lugar. */
+  /** Result text to paste anywhere. */
   shareText() {
     const t = T().arcade;
     const label = this.mode === 'daily' ? t.dailyLabel(this.dailyDate) : t.endlessLabel;
     return `${t.share(label, this.arcadeWave, this.score, this.kills)}\nhttps://akanyane.github.io/dead-pixel/`;
   }
 
-  /** Chamado quando o jogador morre de vez: guarda recordes do arcade e apaga a partida no hardcore. */
+  /** Called when the player dies for good: saves arcade records and erases the save on hardcore. */
   onPlayerDeath() {
     if (this.isArcade()) {
       const b = this.arcadeBest;
@@ -712,7 +712,7 @@ export class Game {
     this.audio.playMusic(this.level.music);
   }
 
-  /** Monta a arena da fase atual e zera tudo o que é da fase anterior. */
+  /** Builds the current level's arena and clears everything from the previous one. */
   private prepareArena() {
     this.map = buildMap(this.level.theme);
     this.wet = new Uint8Array(this.map.w * this.map.h);
@@ -804,7 +804,7 @@ export class Game {
     return this.bosses.reduce((s, b) => s + Math.max(0, b.hp), 0) + (this.level.boss === 'hydra' ? this.hydraReserve() : 0);
   }
 
-  /** HP ainda "guardado" nas divisões futuras da Hidra. */
+  /** HP still "stored" in the Hydra's future splits. */
   hydraReserve() {
     let total = 0;
     const hp = ENEMIES.hydra.hp * this.bossHpMul();
@@ -819,7 +819,7 @@ export class Game {
     this.afterPerk = after;
     const avail = PERKS.filter((p) => !p.max || (this.perks[p.id] ?? 0) < p.max);
     const deal = () => shuffle([...avail]).slice(0, 3);
-    // na run diária, a mesma wave oferece os mesmos patches para todo mundo
+    // in the daily run, the same wave offers the same patches to everyone
     this.perkChoices = this.mode === 'daily' ? withSeed(this.arcadeSeed + this.arcadeWave * 131 + Object.keys(this.perks).length, deal) : deal();
     this.perkHover = 0;
     this.setState('perk');
@@ -873,7 +873,7 @@ export class Game {
   }
 
   nextFromClear() {
-    // o arcade não tem logs da história: vai direto para os patches
+    // arcade mode has no story logs: go straight to the patches
     if (this.isArcade()) return this.openPerks('level');
     this.logT = 0;
     this.setState('log');
@@ -910,7 +910,7 @@ export class Game {
     storageDel(SAVE_KEY);
   }
 
-  // ---- Helpers de jogo ----
+  // ---- Game helpers ----
 
   addLight(x: number, y: number, r: number, color: string) {
     if (this.dynLights.length < 48) this.dynLights.push({ x, y, r, color });
@@ -969,7 +969,7 @@ export class Game {
     if (chance(0.16)) this.addText(e.x, e.y - e.hoff * 2 - 4, pick(KILL_WORDS), pick(['#fff', '#ffd23d', '#ff7ad9', '#39ffe5']));
   }
 
-  /** Conforme o jogo avança, o log para de dizer "zumbi" e começa a dizer quem era. */
+  /** As the game goes on, the log stops saying "zombie" and starts saying who it was. */
   private victimName(e: Enemy) {
     const human = e.kind === 'walker' || e.kind === 'runner' || e.kind === 'recruiter' || e.kind === 'segfault' || e.kind === 'stack';
     const k = [0, 0.08, 0.35, 0.7, 1][this.levelIdx] ?? 1;
@@ -984,13 +984,13 @@ export class Game {
     return this.enemies.length;
   }
 
-  // ---- Loop de jogo ----
+  // ---- Game loop ----
 
   updatePlay(rawDt: number) {
     const target = this.term.open ? 0.08 : this.phase === 'bossDeath' ? 0.32 : this.slowmo > 0 ? 0.3 : this.player.dead ? 0.2 : 1;
     this.timeScale = lerp(this.timeScale, target, clamp(rawDt * 14, 0, 1));
     this.slowmo = Math.max(0, this.slowmo - rawDt);
-    // hitstop quase congela o mundo, mas continua lendo a entrada do jogador
+    // hitstop nearly freezes the world but keeps reading player input
     const dt = rawDt * (this.hitstop > 0 ? 0.03 : this.timeScale);
     this.hitstop = Math.max(0, this.hitstop - rawDt);
     this.dynLights.length = 0;
@@ -1090,7 +1090,7 @@ export class Game {
     if (!this.tookDamage) this.unlock('clean_boss');
     if (!this.usedWeapon) this.unlock('pistol_level');
     if (!this.usedCommand) this.unlock('no_commands');
-    // crate esquecida no chão não pode custar uma arma
+    // a crate left on the floor must not cost the player a weapon
     for (const pk of this.pickups) if (pk.kind === 'weapon' && pk.weapon) giveWeapon(this, pk.weapon, false);
     const reward = this.level.reward;
     this.rewardMsg = '';
@@ -1101,7 +1101,7 @@ export class Game {
     if (!arcade && this.levelIdx === LEVELS.length - 1) {
       if (this.difficulty === 'hard' || this.difficulty === 'hardcore') this.unlock('hard_clear');
       this.clearSave();
-      // o final acontece em silêncio, e a próxima execução já fica contada
+      // the ending plays in silence, and the next run is already counted
       this.endRun = this.run();
       this.progress.runs++;
       this.saveProgress();
@@ -1152,7 +1152,7 @@ export class Game {
       this.note.t -= rawDt;
       if (this.note.t <= 0) this.note = null;
     }
-    // nada de aviso em cima do final: a skin liberada espera a última tela
+    // no toast over the ending: the unlocked skin waits for the last screen
     if (this.toasts.length && !this.inEndingPages()) {
       this.toasts[0].t -= rawDt;
       if (this.toasts[0].t <= 0) this.toasts.shift();
@@ -1164,7 +1164,7 @@ export class Game {
     this.shownScore = lerp(this.shownScore, this.score, clamp(rawDt * 9, 0, 1));
     if (this.state === 'play') this.updatePlay(rawDt);
     else if (this.state === 'dead') {
-      // o mundo continua em câmera lentíssima atrás da tela de morte
+      // the world keeps going in very slow motion behind the death screen
       const dt = rawDt * 0.08;
       updateFx(this, dt);
     }

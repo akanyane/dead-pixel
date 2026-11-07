@@ -1,9 +1,9 @@
-// Todo o som do jogo é sintetizado: não há nenhum arquivo de áudio.
+// All game sound is synthesized: there are no audio files.
 
 interface Track {
   bpm: number;
   root: number;
-  /** Progressão em semitons relativos à tônica, um grau por compasso. */
+  /** Progression in semitones relative to the root, one degree per bar. */
   prog: number[];
   bass: number[];
   arp: number[];
@@ -47,7 +47,7 @@ export class Sound {
   private nextTime = 0;
   private timer = 0;
   muted = false;
-  /** Volumes de 0 a 1, ajustados nas opções. Música em 0 também para o sequenciador. */
+  /** Volumes from 0 to 1, set in the options. Music at 0 also stops the sequencer. */
   musicVol = 0.7;
   sfxVol = 1;
 
@@ -100,7 +100,7 @@ export class Sound {
     if (this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.02);
   }
 
-  /** Abafa a música durante o bullet-time do terminal. */
+  /** Muffles the music during terminal bullet time. */
   setMuffled(on: boolean) {
     if (this.ctx) this.musicFilter.frequency.setTargetAtTime(on ? 420 : 18000, this.ctx.currentTime, 0.08);
   }
@@ -198,7 +198,7 @@ export class Sound {
     this.drumNoise(when, 0.035, vol * 3, 'highpass', 7500);
   }
 
-  // ---- Efeitos ----
+  // ---- Effects ----
 
   private throttled(id: string, gapMs: number) {
     if (!this.ctx) return true;

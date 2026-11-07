@@ -3,8 +3,8 @@ import { T } from './i18n';
 import { TILE, chance, makeCanvas, pick, rand, randInt } from '../core/util';
 
 export const FLOOR = 0;
-export const WALL = 1; // bloqueia tudo
-export const LOW = 2; // bloqueia movimento, tiros passam
+export const WALL = 1; // blocks everything
+export const LOW = 2; // blocks movement, bullets pass
 
 export interface StaticLight {
   x: number;
@@ -68,10 +68,10 @@ export class GameMap {
     return this.solidAt(x - r, y - r) || this.solidAt(x + r, y - r) || this.solidAt(x - r, y + r) || this.solidAt(x + r, y + r);
   }
 
-  /** Movimento com deslizamento nos eixos. Retorna true se bateu em algo. */
+  /** Movement that slides along each axis. Returns true if it hit something. */
   move(o: { x: number; y: number }, dx: number, dy: number, r: number) {
     let hit = false;
-    // quem já está encostado numa parede (spawn, empurrão) pode sair dela: só o centro bloqueia
+    // a body already touching a wall (spawn, knockback) can leave it: only the center blocks
     const embedded = this.collides(o.x, o.y, r);
     if (dx !== 0) {
       const blocked = embedded ? this.solidAt(o.x + dx, o.y) : this.collides(o.x + dx, o.y, r);
@@ -95,7 +95,7 @@ export class GameMap {
     return true;
   }
 
-  /** Campo de fluxo (BFS) até o jogador. Horda inteira compartilha o mesmo cálculo. */
+  /** Flow field (BFS) to the player. The whole horde shares the same computation. */
   computeFlow(px: number, py: number) {
     const { w, h, tiles, distField, dirX, dirY } = this;
     distField.fill(-1);
@@ -128,7 +128,7 @@ export class GameMap {
             if (!ox && !oy) continue;
             const n = c + oy * w + ox;
             if (tiles[n] !== FLOOR || distField[n] < 0) continue;
-            if (ox && oy && (tiles[c + ox] !== FLOOR || tiles[c + oy * w] !== FLOOR)) continue; // sem cortar quina
+            if (ox && oy && (tiles[c + ox] !== FLOOR || tiles[c + oy * w] !== FLOOR)) continue; // no corner cutting
             if (distField[n] < best) {
               best = distField[n];
               bx = ox;
@@ -143,7 +143,7 @@ export class GameMap {
     }
   }
 
-  /** Direção até o centro do próximo tile do caminho: mantém corpos longe das quinas. */
+  /** Direction to the center of the next tile on the path: keeps bodies off corners. */
   flowAt(x: number, y: number): [number, number] {
     const tx = Math.floor(x / TILE);
     const ty = Math.floor(y / TILE);
@@ -156,7 +156,7 @@ export class GameMap {
     return l > 0.01 ? [nx / l, ny / l] : [0, 0];
   }
 
-  /** Remove bolsões isolados para ninguém nascer preso. */
+  /** Removes isolated pockets so nothing spawns trapped. */
   ensureConnected(cx: number, cy: number) {
     const { w, h, tiles } = this;
     const seen = new Uint8Array(w * h);
@@ -186,7 +186,7 @@ export class GameMap {
   }
 }
 
-// ---------- Geradores ----------
+// ---------- Generators ----------
 
 function border(m: GameMap) {
   for (let x = 0; x < m.w; x++) {
@@ -261,7 +261,7 @@ function genUndernet(m: GameMap) {
     }
     m.tiles.set(next);
   }
-  // a arena central é maior: chefes precisam de espaço
+  // the central arena is bigger: bosses need room
   const cx = w >> 1;
   const cy = h >> 1;
   for (let y = -6; y <= 6; y++) for (let x = -10; x <= 10; x++) if ((x * x) / 100 + (y * y) / 36 < 1) m.set(cx + x, cy + y, FLOOR);
@@ -282,7 +282,7 @@ function genProduction(m: GameMap) {
     m.set(x + 1, y + 1, low ? LOW : WALL);
   }
   clearCenter(m, 6);
-  // o Monolito ocupa o topo central
+  // the Monolith takes the top center
   const cx = m.w >> 1;
   for (let y = 1; y < 9; y++) for (let x = -5; x <= 5; x++) m.set(cx + x, y, FLOOR);
   for (let i = 0; i < 16; i++) m.barrelSpots.push({ x: randInt(2, m.w - 3), y: randInt(2, m.h - 3) });
@@ -300,7 +300,7 @@ function genVoid(m: GameMap) {
   }
 }
 
-// ---------- Pintura estática ----------
+// ---------- Static painting ----------
 
 function noise(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, cols: string[], n: number) {
   for (let i = 0; i < n; i++) {
@@ -472,7 +472,7 @@ function paintProduction(m: GameMap) {
       }
     }
   }
-  // listras de perigo ao redor da arena
+  // hazard stripes around the arena
   c.save();
   const bx = 3 * TILE;
   const by = 3 * TILE;
