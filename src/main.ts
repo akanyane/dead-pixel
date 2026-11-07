@@ -6,7 +6,7 @@ import { Game } from './game/game';
 import { advanceEnding, logDone, renderClear, renderDead, renderHud, renderLog, renderPause, renderPerks, renderStory, renderToast, renderVictory, storyDuration } from './game/hud';
 import { LANGS, T, getLang, setLang } from './game/i18n';
 import { renderWorld } from './game/render';
-import { openSkins, renderIntro, renderManual, renderSkins, updateIntro, updateManual, updateSkins } from './game/screens';
+import { openAchievements, openSkins, renderAchievements, renderIntro, renderManual, renderSkins, updateAchievements, updateIntro, updateManual, updateSkins } from './game/screens';
 import { SPR, buildSprites, drawSprite, skinSprites } from './game/sprites';
 
 const screen = document.getElementById('screen') as HTMLCanvasElement;
@@ -19,6 +19,8 @@ const game = new Game(input);
 presenter.crtEnabled = game.crtOn;
 
 input.onFirstGesture = () => game.audio.init();
+// abates somados não podem se perder se a aba for fechada no meio de uma fase
+window.addEventListener('pagehide', () => game.saveProgress());
 
 const params = new URLSearchParams(location.search);
 if (import.meta.env.DEV) {
@@ -73,6 +75,7 @@ function menuItems(): MenuItem[] {
   }
   items.push({ label: t.menu.newGame, act: () => game.newGame() });
   items.push({ label: t.menu.skins, act: () => openSkins(game) });
+  items.push({ label: t.menu.achievements, act: () => openAchievements(game, 'menu') });
   items.push({ label: t.menu.manual, act: () => openManual('menu') });
   items.push({ label: t.menu.options, act: () => openOptions('menu') });
   items.push({ label: langLabel(), act: cycleLang });
@@ -96,6 +99,7 @@ function pauseItems(): MenuItem[] {
   return [
     { label: t.pause.resume, act: () => { game.setState('play'); game.audio.setMuffled(false); } },
     { label: t.menu.manual.split(':')[0], act: () => openManual('pause') },
+    { label: t.menu.achievements, act: () => openAchievements(game, 'pause') },
     { label: t.menu.options, act: () => openOptions('pause') },
     { label: t.pause.quit, act: () => game.quitToMenu() },
   ];
@@ -279,6 +283,9 @@ function handleInput(dt: number) {
     case 'skins':
       updateSkins(game, input);
       break;
+    case 'achievements':
+      updateAchievements(game, input);
+      break;
     case 'intro':
       updateIntro(game, input);
       break;
@@ -359,6 +366,9 @@ function render(dt: number) {
       break;
     case 'skins':
       renderSkins(game, ctx);
+      break;
+    case 'achievements':
+      renderAchievements(game, ctx);
       break;
     case 'log':
       renderLog(game, ctx);

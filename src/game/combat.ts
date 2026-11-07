@@ -15,6 +15,7 @@ export function giveWeapon(g: Game, id: WeaponId, equip = true) {
     p.weapons.push(id);
     p.weapons.sort((a, b) => WEAPON_ORDER.indexOf(a) - WEAPON_ORDER.indexOf(b));
     p.ammo[id] = Math.floor(def.ammoMax * 0.6 * g.stats.ammoMul);
+    if (p.weapons.length >= WEAPON_ORDER.length) g.unlock('all_weapons');
     if (equip) p.weapon = id;
   } else if (id !== 'pistol') {
     p.ammo[id] = Math.min(Math.floor(def.ammoMax * g.stats.ammoMul), p.ammo[id] + def.ammoPickup * 2);
@@ -36,7 +37,10 @@ function fireWeapon(g: Game) {
     g.audio.ui(false);
     return;
   }
-  if (p.weapon !== 'pistol') p.ammo[p.weapon]--;
+  if (p.weapon !== 'pistol') {
+    p.ammo[p.weapon]--;
+    g.usedWeapon = true;
+  }
   const over = p.overclockT > 0 ? 1.9 : 1;
   p.cd = def.rate / (s.rate * over);
   p.gunKick = def.kick;
@@ -365,6 +369,9 @@ export function hurtBarrel(g: Game, b: { x: number; y: number; hp: number; flash
       if (g.state === 'play') {
         explosion(g, b.x, b.y - 5, 64, 130, true);
         g.addText(b.x, b.y - 18, 'UPS OFFLINE', '#ffd23d', 1, 0.9);
+        g.barrelBooms = g.barrelBooms.filter((t) => g.time - t < 1.5);
+        g.barrelBooms.push(g.time);
+        if (g.barrelBooms.length >= 3) g.unlock('chain_3');
       }
     }, 70);
   }
@@ -374,6 +381,7 @@ export function hurtPlayer(g: Game, dmg: number, srcX: number, srcY: number, by:
   const p = g.player;
   if (g.god || p.dead || p.invuln > 0 || p.dashT > 0 || p.sudoT > 0) return false;
   g.lastKiller = by;
+  g.tookDamage = true;
   p.hp -= dmg;
   p.invuln = 0.55;
   g.hurtFlash = 1;
@@ -389,6 +397,7 @@ export function hurtPlayer(g: Game, dmg: number, srcX: number, srcY: number, by:
   if (p.hp <= 0) {
     if (g.stats.backup > 0) {
       g.stats.backup = 0;
+      g.unlock('backup_used');
       g.perks.backup = 1;
       p.hp = p.maxHp * 0.5;
       p.invuln = 2.5;
@@ -454,12 +463,14 @@ export function rmRf(g: Game) {
   g.audio.explosion(true);
   ring(g, p.x, p.y - 6, 700, 0.5, '#ffffff');
   ring(g, p.x, p.y - 6, 500, 0.6, '#ff2a2a');
+  const killsBefore = g.kills;
   for (const e of [...g.enemies]) {
     if (e.dead) continue;
     if (Math.abs(e.x - p.x) < W * 0.7 && Math.abs(e.y - p.y) < H * 0.7) {
       hurtEnemy(g, e, 500, angleTo(p.x, p.y, e.x, e.y), { force: 340, gib: true, quiet: true });
     }
   }
+  if (g.kills - killsBefore >= 20) g.unlock('rm_20');
   g.ebullets = [];
   for (const b of g.barrels) if (b.hp > 0 && Math.abs(b.x - p.x) < W * 0.6 && Math.abs(b.y - p.y) < H * 0.6) hurtBarrel(g, b, 99);
 }
@@ -907,6 +918,8 @@ function meleeSwing(g: Game) {
     const before = e.hp;
     hurtEnemy(g, e, 70 * s.melee * s.dmg * (p.sudoT > 0 ? 2 : 1), a, { force: 300, gib: true });
     if (e.dead && before > 0) {
+      g.progress.meleeKills++;
+      g.checkAchievements();
       p.hp = Math.min(p.maxHp, p.hp + 3);
     }
   }

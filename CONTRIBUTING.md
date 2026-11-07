@@ -53,6 +53,7 @@ fix: impede item de nascer dentro de parede
 | --- | --- |
 | Balancear inimigos, armas, perks ou waves | `src/game/data.ts` |
 | Criar uma skin | `SKINS` em `src/game/data.ts` e o texto em `src/game/i18n.ts` |
+| Criar uma conquista | `src/game/achievements.ts` e o texto em `src/game/i18n.ts` |
 | Mudar ou traduzir textos | `src/game/i18n.ts` |
 | Criar um comando de terminal | `src/game/terminal.ts` |
 | Mudar a IA de inimigos e chefes | `src/game/enemies.ts` |
