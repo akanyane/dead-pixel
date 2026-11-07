@@ -1,8 +1,9 @@
 import { H, TILE, W, angleTo, chance, clamp, dist, distToSegment, lerp, pick, rand, randInt } from '../core/util';
-import { ENEMIES, WEAPONS, WEAPON_ORDER, type WeaponId } from './data';
+import { ENEMIES, SKINS, WEAPONS, WEAPON_ORDER, type WeaponId } from './data';
+import { T } from './i18n';
 import { spawnEnemy } from './enemies';
 import { BLOOD, P, bloodFountain, bloodSpray, dismember, fireBurst, glitchPixels, ring, smokeBurst, sparks, spawnGib, spawnPart, splat } from './fx';
-import type { Bullet, Enemy, Game, Pickup } from './game';
+import type { Bullet, Enemy, Game, KillerId, Pickup } from './game';
 import { SPR } from './sprites';
 
 // ---------- Armas ----------
@@ -31,7 +32,7 @@ function fireWeapon(g: Game) {
   const s = g.stats;
   if (p.ammo[p.weapon] <= 0) {
     p.weapon = 'pistol';
-    g.note = { text: 'munição esgotada: voltando para printf()', t: 1.5 };
+    g.note = { text: T().notes.noAmmo, t: 1.5 };
     g.audio.ui(false);
     return;
   }
@@ -131,7 +132,10 @@ interface HurtOpts {
 
 export function hurtEnemy(g: Game, e: Enemy, dmg: number, ang: number, o: HurtOpts = {}) {
   if (e.dead || e.spawnT > 0.25) return;
-  if (e.kind === 'monolith' && e.state === 0) dmg *= 0.3; // blindagem até as portas abrirem
+  if (e.kind === 'monolith' && e.state === 0) {
+    dmg *= 0.3; // blindagem até as portas abrirem
+    g.hint('armored', T().hints.armored);
+  }
   e.hp -= dmg;
   e.flash = e.boss ? 0.022 : 0.07; // chefe sob fogo contínuo não pode virar silhueta branca
   const force = o.force ?? 40;
@@ -155,7 +159,7 @@ export function hurtEnemy(g: Game, e: Enemy, dmg: number, ang: number, o: HurtOp
     glitchPixels(g, e.x + rand(-e.r, e.r), hy + rand(-e.r, e.r), 2);
   }
   if (o.crit || dmg >= 60) {
-    g.addText(e.x + rand(-4, 4), hy - e.r - 2, o.crit ? 'NaN' : String(Math.round(dmg)), o.crit ? '#ff2bd6' : '#ffd23d', dmg > 200 ? 2 : 1, 0.6);
+    g.addText(e.x + rand(-4, 4), hy - e.r - 2, String(Math.round(dmg)), o.crit ? '#ff2bd6' : '#ffd23d', dmg > 200 ? 2 : 1, 0.6);
   }
   // perdeu o braço: zumbi continua vindo, espirrando sangue
   if (!e.wounded && e.hp < e.maxHp * 0.55 && (e.kind === 'walker' || e.kind === 'recruiter')) {
@@ -312,6 +316,7 @@ export function spawnPickupsForWaveClear(g: Game) {
   addPickup(g, 'ram', p.x + rand(-26, 26), p.y + rand(-22, 22));
   if (g.levelIdx === 0 && g.waveIdx === 0) {
     addPickup(g, 'weapon', p.x + 18, p.y, 'smg');
+    g.hint('crate', T().hints.crate);
   }
 }
 
@@ -365,9 +370,10 @@ export function hurtBarrel(g: Game, b: { x: number; y: number; hp: number; flash
   }
 }
 
-export function hurtPlayer(g: Game, dmg: number, srcX: number, srcY: number) {
+export function hurtPlayer(g: Game, dmg: number, srcX: number, srcY: number, by: KillerId) {
   const p = g.player;
   if (g.god || p.dead || p.invuln > 0 || p.dashT > 0 || p.sudoT > 0) return false;
+  g.lastKiller = by;
   p.hp -= dmg;
   p.invuln = 0.55;
   g.hurtFlash = 1;
@@ -386,7 +392,7 @@ export function hurtPlayer(g: Game, dmg: number, srcX: number, srcY: number) {
       g.perks.backup = 1;
       p.hp = p.maxHp * 0.5;
       p.invuln = 2.5;
-      g.announce = { text: 'BACKUP RESTAURADO', t: 2, color: '#39ffe5' };
+      g.announce = { text: T().notes.backup, t: 2, color: '#39ffe5' };
       g.audio.command();
       g.whiteFlash = 1;
       explosion(g, p.x, p.y - 6, 90, 200, true);
@@ -402,6 +408,8 @@ function killPlayer(g: Game) {
   p.dead = true;
   p.hp = 0;
   g.saveBest();
+  g.progress.deaths++;
+  g.saveProgress();
   dismember(g, p.x, p.y, rand(6.3), 200, BLOOD.red, true);
   bloodFountain(g, p.x, p.y, 10, 140, BLOOD.red);
   g.glitch = 1;
@@ -616,7 +624,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     p.dashT -= dt;
     const dashSpeed = 340;
     g.map.move(p, p.dashX * dashSpeed * dt, p.dashY * dashSpeed * dt, 4);
-    spawnPart(g, P.Pixel, p.x + rand(-4, 4), p.y - rand(0, 14), 0, 0, 0, 0, 0.25, pick(['#39ffe5', '#ff2bd6', '#14505c']), 2);
+    spawnPart(g, P.Pixel, p.x + rand(-4, 4), p.y - rand(0, 14), 0, 0, 0, 0, 0.25, pick((SKINS.find((k) => k.id === g.progress.skin) ?? SKINS[0]).trail), 2);
     if (s.dashDmg > 0) {
       forNear(g, p.x, p.y - 6, (e) => {
         if (dist(p.x, p.y - 6, e.x, e.y - e.hoff) < e.r + 8 && e.orbitCd <= 0) {
@@ -757,7 +765,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     b.y += b.vy * dt;
     let gone = b.life <= 0 || g.map.blocksBullet(b.x, b.y);
     if (!gone && dist(b.x, b.y, phx, phy) < b.r + 4) {
-      if (hurtPlayer(g, b.dmg, b.x - b.vx, b.y - b.vy)) gone = true;
+      if (hurtPlayer(g, b.dmg, b.x - b.vx, b.y - b.vy, b.by)) gone = true;
     }
     if (gone) {
       sparks(g, b.x, b.y, 3, b.color, 50);
@@ -796,7 +804,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     const pd = g.puddles[k];
     pd.life -= dt;
     if (pd.life <= 0) g.puddles.splice(k, 1);
-    else if (dist(pd.x, pd.y, p.x, p.y) < pd.r) hurtPlayer(g, 4, pd.x, pd.y);
+    else if (dist(pd.x, pd.y, p.x, p.y) < pd.r) hurtPlayer(g, 4, pd.x, pd.y, 'leak');
   }
   for (let k = g.tracers.length - 1; k >= 0; k--) {
     g.tracers[k].life -= dt;
@@ -819,7 +827,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
       b.life -= dt;
       const ex = b.x + Math.cos(b.a) * b.len;
       const ey = b.y + Math.sin(b.a) * b.len;
-      if (distToSegment(phx, phy, b.x, b.y, ex, ey) < b.w + 3) hurtPlayer(g, b.dmg, b.x, b.y);
+      if (distToSegment(phx, phy, b.x, b.y, ex, ey) < b.w + 3) hurtPlayer(g, b.dmg, b.x, b.y, 'beam');
       for (let d = 30; d < b.len; d += 70) g.addLight(b.x + Math.cos(b.a) * d, b.y + Math.sin(b.a) * d, 44, '#ff2a2a');
       if (b.life <= 0) g.beams.splice(k, 1);
     }
@@ -842,7 +850,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
       }
     } else {
       h.life -= dt;
-      if (p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h) hurtPlayer(g, h.dmg, p.x, p.y);
+      if (p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h) hurtPlayer(g, h.dmg, p.x, p.y, h.style);
       if (h.style === 'deploy' && !h.stained) {
         h.stained = true;
         const c = g.map.fctx;
@@ -885,9 +893,7 @@ function meleeSwing(g: Game) {
   p.meleeT = 0.16;
   g.audio.melee();
   g.tracers.push({ ax: p.x, ay: p.y - 7, bx: p.x + Math.cos(p.aim) * 30, by: p.y - 7 + Math.sin(p.aim) * 30, life: 0.07, max: 0.07, color: '#ffffff', w: 1 });
-  for (let n = 0; n < 3; n++) {
-    spawnGib(g, pick(SPR.gibKey), p.x + Math.cos(p.aim) * 14, p.y - 6, 10, 90, p.aim, null);
-  }
+  sparks(g, p.x + Math.cos(p.aim) * 14, p.y - 6 + Math.sin(p.aim) * 14, 5, '#cfd6e0', 70);
   let connected = 0;
   for (const e of [...g.enemies]) {
     if (e.dead) continue;
@@ -902,7 +908,6 @@ function meleeSwing(g: Game) {
     hurtEnemy(g, e, 70 * s.melee * s.dmg * (p.sudoT > 0 ? 2 : 1), a, { force: 300, gib: true });
     if (e.dead && before > 0) {
       p.hp = Math.min(p.maxHp, p.hp + 3);
-      g.addText(e.x, e.y - 18, 'CTRL+ALT+DEL', '#ffffff', 1, 0.7);
     }
   }
   if (connected) {
@@ -916,7 +921,7 @@ function collect(g: Game, pk: Pickup) {
   switch (pk.kind) {
     case 'hp':
       p.hp = Math.min(p.maxHp, p.hp + 22);
-      g.addText(p.x, p.y - 22, 'hotfix +22', '#ff5a6a');
+      g.addText(p.x, p.y - 22, T().floats.hotfix, '#ff5a6a');
       g.audio.pickup(0);
       break;
     case 'ammo':
@@ -939,7 +944,7 @@ function collect(g: Game, pk: Pickup) {
       if (pk.weapon) {
         giveWeapon(g, pk.weapon);
         g.announce = { text: `npm install ${WEAPONS[pk.weapon].name}`, t: 2, color: '#a8ff3e' };
-        g.note = { text: WEAPONS[pk.weapon].desc, t: 3 };
+        g.note = { text: T().weapons[pk.weapon].desc, t: 3 };
         g.audio.command();
       }
       break;

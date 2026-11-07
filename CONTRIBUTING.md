@@ -1,6 +1,6 @@
 # Contribuindo com o DEAD PIXEL
 
-Toda ajuda é bem-vinda: balanceamento, novos inimigos, comandos de terminal, piadas ruins de TI ou correção de bugs.
+Toda ajuda é bem-vinda: balanceamento, novos inimigos, comandos de terminal, traduções ou correção de bugs.
 
 ## Preparando o ambiente
 
@@ -52,6 +52,8 @@ fix: impede item de nascer dentro de parede
 | Quero... | Arquivo |
 | --- | --- |
 | Balancear inimigos, armas, perks ou waves | `src/game/data.ts` |
+| Criar uma skin | `SKINS` em `src/game/data.ts` e o texto em `src/game/i18n.ts` |
+| Mudar ou traduzir textos | `src/game/i18n.ts` |
 | Criar um comando de terminal | `src/game/terminal.ts` |
 | Mudar a IA de inimigos e chefes | `src/game/enemies.ts` |
 | Mudar dano, projéteis e controles | `src/game/combat.ts` |
@@ -59,6 +61,8 @@ fix: impede item de nascer dentro de parede
 | Criar ou mudar uma arena | `src/game/map.ts` |
 | Desenhar sprites | `src/game/sprites.ts` |
 | Mexer em efeitos sonoros e música | `src/core/audio.ts` |
+
+Todo texto visível fica em `src/game/i18n.ts`, nos três idiomas. A fonte é um bitmap próprio: além de ASCII, ela só tem os acentos usados em português e espanhol, mais `¡` e `¿`.
 
 O projeto não usa assets externos: toda arte e todo som nascem de código. Mantenha essa regra em novas contribuições.
 

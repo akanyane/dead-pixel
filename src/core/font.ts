@@ -21,12 +21,17 @@ RAW.split('|').forEach((hex, i) => {
   GLYPHS.set(String.fromCharCode(32 + i), cols);
 });
 
+// Pontuação do espanhol: versões invertidas de ! e ?
+GLYPHS.set('\u00a1', [0x00, 0x00, 0x7d, 0x00, 0x00]);
+GLYPHS.set('\u00bf', [0x20, 0x40, 0x4d, 0x48, 0x30]);
+
 type Px = [number, number];
 const MARKS: Record<string, (r0: number, r1: number) => Px[]> = {
   '́': (a, b) => [[3, a], [2, b]],
   '̀': (a, b) => [[1, a], [2, b]],
   '̂': (a, b) => [[2, a], [1, b], [3, b]],
   '̃': (a, b) => [[1, b], [2, a], [3, b], [4, a]],
+  '̈': (_a, b) => [[1, b], [3, b]],
 };
 
 const glyphCache = new Map<string, Px[]>();

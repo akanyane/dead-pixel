@@ -1,4 +1,5 @@
 import { makeCanvas } from '../core/util';
+import { SKINS } from './data';
 
 export interface Sprite {
   c: HTMLCanvasElement;
@@ -77,7 +78,6 @@ function zombie(colors: Pal): WalkSet {
 }
 
 export const SPR = {} as {
-  player: Sprite[];
   playerGold: Sprite[];
   ally: Sprite[];
   zombies: WalkSet[];
@@ -98,7 +98,6 @@ export const SPR = {} as {
   gibRib: Sprite;
   gibGut: Sprite;
   gibEye: Sprite;
-  gibKey: Sprite[];
   gibChip: Sprite;
   gibSlime: Sprite;
   gibLeg6: Sprite;
@@ -108,23 +107,41 @@ export const SPR = {} as {
   crate: Sprite;
 };
 
+const PLAYER_PAL: Pal = { H: '#14505c', h: '#0e3840', S: '#e0b48c', C: '#39ffe5', T: '#17202c', t: '#232f40', L: '#a8ff3e', B: '#27324a', K: '#0a0a12', W: '#a8ff3e' };
+const P_HEAD = ['...HHHHH...', '..HHHHHHH..', '..HHSSSSS..', '..HHCCSCC..', '..HHSSSSS..', '...HSSSS...'];
+const P_TORSO = ['..TTTTTTT..', '.TTTWTWTTT.', '.TT.TTT.TT.', '.SS.TLT.SS.', '....TTT....'];
+const P_LEGS = [['...BB.BB...', '...BB.BB...', '...KK.KK...'], ['...BB.BB...', '..BB...BB..', '..KK...KK..'], ['...BBBB....', '...BBBB....', '...KKKK....']];
+
+function playerSprites(pal: Pal): Sprite[] {
+  return P_LEGS.map((legs) => sprite([...P_HEAD, ...P_TORSO, ...legs], pal));
+}
+
+const skinCache = new Map<string, Sprite[]>();
+const RGB_STEPS = 12;
+
+/** Quadros do jogador para uma skin. A skin RGB troca de matiz com o tempo. */
+export function skinSprites(id: string, time = 0): Sprite[] {
+  const skin = SKINS.find((s) => s.id === id) ?? SKINS[0];
+  const step = skin.rgb ? Math.floor(time * 6) % RGB_STEPS : 0;
+  const key = `${skin.id}:${step}`;
+  let set = skinCache.get(key);
+  if (!set) {
+    const pal: Pal = { ...PLAYER_PAL, ...skin.pal };
+    if (skin.rgb) {
+      const hue = (step / RGB_STEPS) * 360;
+      pal.H = `hsl(${hue} 90% 50%)`;
+      pal.T = `hsl(${(hue + 120) % 360} 85% 42%)`;
+      pal.W = pal.L = `hsl(${(hue + 240) % 360} 100% 65%)`;
+    }
+    set = playerSprites(pal);
+    skinCache.set(key, set);
+  }
+  return set;
+}
+
 export function buildSprites() {
-  const P: Pal = { H: '#14505c', h: '#0e3840', S: '#e0b48c', C: '#39ffe5', T: '#17202c', t: '#232f40', L: '#a8ff3e', B: '#27324a', K: '#0a0a12', W: '#a8ff3e' };
-  const PG: Pal = { ...P, H: '#d7a520', T: '#8a6410', t: '#a87a12', L: '#fff29a', W: '#fff29a', C: '#ffffff' };
-  const PA: Pal = { ...P, H: '#264f8f', T: '#17305c', S: '#7fd4ff', C: '#ffffff', L: '#7fd4ff', W: '#7fd4ff' };
-  const head = ['...HHHHH...', '..HHHHHHH..', '..HHSSSSS..', '..HHCCSCC..', '..HHSSSSS..', '...HSSSS...'];
-  const torso = ['..TTTTTTT..', '.TTTWTWTTT.', '.TT.TTT.TT.', '.SS.TLT.SS.', '....TTT....'];
-  const legsIdle = ['...BB.BB...', '...BB.BB...', '...KK.KK...'];
-  const legsA = ['...BB.BB...', '..BB...BB..', '..KK...KK..'];
-  const legsB = ['...BBBB....', '...BBBB....', '...KKKK....'];
-  const mk = (pal: Pal) => [
-    sprite([...head, ...torso, ...legsIdle], pal),
-    sprite([...head, ...torso, ...legsA], pal),
-    sprite([...head, ...torso, ...legsB], pal),
-  ];
-  SPR.player = mk(P);
-  SPR.playerGold = mk(PG);
-  SPR.ally = mk(PA);
+  SPR.playerGold = playerSprites({ ...PLAYER_PAL, H: '#d7a520', T: '#8a6410', t: '#a87a12', L: '#fff29a', W: '#fff29a', C: '#ffffff' });
+  SPR.ally = playerSprites({ ...PLAYER_PAL, H: '#264f8f', T: '#17305c', S: '#7fd4ff', C: '#ffffff', L: '#7fd4ff', W: '#7fd4ff' });
 
   SPR.zombies = [
     zombie({ H: '#2a1d14', T: '#4f5d75', L: '#39415a', B: '#2b3248', K: '#111' }), // moletom
@@ -216,11 +233,6 @@ export function buildSprites() {
   SPR.gibRib = sprite(['w.w.w', 'wwwww', 'r.r.r'], G);
   SPR.gibGut = sprite(['.pp.', 'prrp', 'pRrp', 'Rp..'], G);
   SPR.gibEye = sprite(['ww', 'we'], G);
-  SPR.gibKey = [
-    sprite(['KKKK', 'KkkK', 'gggg'], G),
-    sprite(['kkkk', 'kKKk', 'gggg'], G),
-    sprite(['ccc', 'gcg'], G),
-  ];
   SPR.gibChip = sprite(['g.g.g', 'kkkkk', 'kckck', 'kkkkk', 'g.g.g'], G);
   SPR.gibSlime = sprite(['.ss.', 'sssS', 'SsSS'], G);
   SPR.gibLeg6 = sprite(['l.l', '.l.', 'l.l'], G);

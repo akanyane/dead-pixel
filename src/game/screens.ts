@@ -1,0 +1,392 @@
+// Telas de consulta: manual, cartões de inimigo novo e seleção de skin.
+import { drawText, wrap } from '../core/font';
+import type { Input } from '../core/input';
+import { H, W } from '../core/util';
+import { ENEMIES, LEVELS, SKINS, WEAPONS, WEAPON_ORDER, type EnemyKind } from './data';
+import type { Enemy, Game } from './game';
+import { bar } from './hud';
+import { T } from './i18n';
+import { drawEnemy } from './render';
+import { SPR, drawSprite, skinSprites } from './sprites';
+import { COMMANDS } from './terminal';
+
+const REGULAR: EnemyKind[] = ['walker', 'bug', 'runner', 'recruiter', 'leak', 'leakSmall', 'nullp', 'segfault', 'stack'];
+const BOSSES: EnemyKind[] = ['scrum', 'kernel', 'hydra', 'monolith', 'pixel'];
+
+/** Primeira fase em que o inimigo aparece, calculada das próprias waves. */
+function firstLevel(kind: EnemyKind) {
+  if (kind === 'leakSmall') return firstLevel('leak');
+  const i = LEVELS.findIndex((l) => l.boss === kind || l.waves.some((w) => w.spawns.some(([k]) => k === kind)));
+  return i + 1;
+}
+
+// ---------- Prévia animada de inimigos ----------
+
+const PREVIEW_SCALE: Partial<Record<EnemyKind, number>> = { walker: 4, runner: 5, bug: 6, leak: 4, leakSmall: 6, stack: 3, nullp: 4, segfault: 4, recruiter: 4, scrum: 1, kernel: 1, hydra: 2, monolith: 1, pixel: 2 };
+const previews = new Map<EnemyKind, Enemy>();
+
+function preview(kind: EnemyKind): Enemy {
+  let e = previews.get(kind);
+  if (!e) {
+    const d = ENEMIES[kind];
+    e = {
+      kind, def: d, x: 0, y: 0, vx: 0, vy: 0, hp: d.hp, maxHp: d.hp, r: d.r, hoff: d.hoff, flash: 0, t: 0, flip: false,
+      state: kind === 'monolith' || kind === 'pixel' ? (kind === 'pixel' ? 2 : 1) : 0, stateT: 1, a: 0, b: 0, wounded: false, burn: 0, stun: 0, skin: 0, speedMul: 1,
+      boss: BOSSES.includes(kind), tier: kind === 'hydra' ? 3 : 0, dead: false, atkCd: 0, orbitCd: 0, spawnT: 0, lastX: 0, lastY: 0, stuckT: 0,
+    };
+    if (kind === 'pixel') e.r = 12;
+    previews.set(kind, e);
+  }
+  return e;
+}
+
+function drawPreview(g: Game, ctx: CanvasRenderingContext2D, kind: EnemyKind, x: number, y: number, w: number, h: number) {
+  ctx.fillStyle = kind === 'pixel' ? '#ecece6' : '#0b1016';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#2b3844';
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  const e = preview(kind);
+  e.t = g.time;
+  const k = PREVIEW_SCALE[kind] ?? 3;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x + 1, y + 1, w - 2, h - 2);
+  ctx.clip();
+  const cy = kind === 'pixel' ? y + h / 2 : y + h - 6;
+  ctx.translate(x + w / 2, cy);
+  ctx.scale(k, k);
+  drawEnemy(g, ctx, e);
+  ctx.restore();
+}
+
+function stat(ctx: CanvasRenderingContext2D, label: string, value: string, k: number, x: number, y: number, color: string) {
+  drawText(ctx, label, x, y, '#6d7f8f');
+  drawText(ctx, value, x + 62 + 96, y, '#ffffff', { align: 'right' });
+  bar(ctx, x + 62, y + 9, 96, 2, k, color);
+}
+
+function paragraph(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, chars: number, color: string) {
+  const lines = wrap(text, chars);
+  lines.forEach((l, i) => drawText(ctx, l, x, y + i * 10, color));
+  return y + lines.length * 10;
+}
+
+/** Ficha de inimigo, usada no manual e nos cartões em jogo. */
+function enemySheet(g: Game, ctx: CanvasRenderingContext2D, kind: EnemyKind, x: number, y: number, chars: number) {
+  const t = T();
+  const m = t.manual;
+  const info = t.enemies[kind];
+  const d = ENEMIES[kind];
+  const boss = BOSSES.includes(kind);
+  drawPreview(g, ctx, kind, x, y, 92, 92);
+  const sx = x + 100;
+  drawText(ctx, info.name, sx, y, boss ? '#ff5a5a' : '#ffffff');
+  drawText(ctx, info.role, sx, y + 11, '#ffd23d');
+  const lvl = firstLevel(kind);
+  drawText(ctx, boss ? m.boss(lvl) : m.appears(lvl), sx, y + 22, '#6d7f8f');
+  const hpRef = boss ? 22000 : 300;
+  stat(ctx, m.hp, String(kind === 'hydra' ? Math.round(d.hp * 2.62) : d.hp), Math.sqrt(d.hp / hpRef), sx, y + 36, '#e8222a');
+  stat(ctx, m.speed, String(d.speed), d.speed / 96, sx, y + 50, '#39ffe5');
+  stat(ctx, m.damage, String(d.dmg), d.dmg / 28, sx, y + 64, '#ffae3a');
+  stat(ctx, m.reward, `+${d.ram}MB`, d.ram / (boss ? 200 : 24), sx, y + 78, '#39ff88');
+  let ty = paragraph(ctx, info.desc, x, y + 100, chars, '#dfe6ee');
+  ty += 4;
+  drawText(ctx, m.howTo, x, ty, '#39ff88');
+  paragraph(ctx, info.tip, x, ty + 10, chars, '#aab7c4');
+}
+
+// ---------- Manual ----------
+
+interface Entry {
+  label: string;
+  draw: (x: number, y: number) => void;
+}
+
+const DETAIL_CHARS = 52;
+
+function manualEntries(g: Game, ctx: CanvasRenderingContext2D, tab: number): Entry[] {
+  const t = T();
+  const m = t.manual;
+  if (tab === 0 || tab === 1) {
+    // nomes que não cabem na lista ficam só com a primeira palavra; a ficha mostra o nome inteiro
+    const short = (n: string) => (n.length > 20 ? n.split(' ')[0] : n);
+    return (tab === 0 ? REGULAR : BOSSES).map((k) => ({ label: short(t.enemies[k].name), draw: (x, y) => enemySheet(g, ctx, k, x, y, DETAIL_CHARS) }));
+  }
+  if (tab === 2) {
+    const weaponEntries: Entry[] = WEAPON_ORDER.map((id) => ({
+      label: WEAPONS[id].name,
+      draw: (x, y) => {
+        const d = WEAPONS[id];
+        const w = t.weapons[id];
+        ctx.fillStyle = '#0b1016';
+        ctx.fillRect(x, y, 92, 50);
+        ctx.strokeStyle = '#2b3844';
+        ctx.strokeRect(x + 0.5, y + 0.5, 91, 49);
+        drawSprite(ctx, SPR.guns[id], x + 46, y + 32, false, false, 4);
+        const sx = x + 100;
+        drawText(ctx, d.name, sx, y, '#ffffff');
+        drawText(ctx, w.kind, sx, y + 11, '#ffd23d');
+        const dmg = d.pellets > 1 ? `${d.dmg} x${d.pellets}` : String(d.dmg);
+        stat(ctx, m.damage, dmg, (d.dmg * d.pellets) / 170, sx, y + 24, '#ffae3a');
+        stat(ctx, m.rate, `${d.rate}s`, 0.07 / d.rate, sx, y + 38, '#39ffe5');
+        stat(ctx, m.ammo, d.ammoMax === Infinity ? m.infinite : String(d.ammoMax), d.ammoMax === Infinity ? 1 : d.ammoMax / 800, sx, y + 52, '#39ff88');
+        let ty = paragraph(ctx, w.desc, x, y + 72, DETAIL_CHARS, '#dfe6ee');
+        ty += 4;
+        drawText(ctx, m.howTo, x, ty, '#39ff88');
+        ty = paragraph(ctx, w.tip, x, ty + 10, DETAIL_CHARS, '#aab7c4');
+        drawText(ctx, m.get, x, ty + 4, '#39ff88');
+        drawText(ctx, w.how, x, ty + 14, '#aab7c4');
+      },
+    }));
+    weaponEntries.push({
+      label: t.melee.name,
+      draw: (x, y) => {
+        drawText(ctx, t.melee.name, x, y, '#ffffff');
+        drawText(ctx, t.melee.kind, x, y + 11, '#ffd23d');
+        let ty = paragraph(ctx, t.melee.desc, x, y + 26, DETAIL_CHARS, '#dfe6ee');
+        ty += 4;
+        drawText(ctx, m.howTo, x, ty, '#39ff88');
+        paragraph(ctx, t.melee.tip, x, ty + 10, DETAIL_CHARS, '#aab7c4');
+      },
+    });
+    return weaponEntries;
+  }
+  if (tab === 3) {
+    return COMMANDS.map((c) => ({
+      label: c.name,
+      draw: (x, y) => {
+        drawText(ctx, c.name, x, y, '#39ff88', { scale: 2 });
+        drawText(ctx, `${m.cost}: ${c.cost}MB`, x, y + 22, '#ffd23d');
+        let ty = paragraph(ctx, t.commands[c.name].long, x, y + 38, DETAIL_CHARS, '#dfe6ee');
+        ty += 6;
+        drawText(ctx, m.aliases, x, ty, '#6d7f8f');
+        paragraph(ctx, c.aliases.join(', '), x, ty + 10, DETAIL_CHARS, '#aab7c4');
+      },
+    }));
+  }
+  return m.tips.map((tip) => ({
+    label: tip.title,
+    draw: (x, y) => {
+      drawText(ctx, tip.title, x, y, '#39ff88', { scale: 2 });
+      paragraph(ctx, tip.body, x, y + 26, DETAIL_CHARS, '#dfe6ee');
+    },
+  }));
+}
+
+const TAB_Y = 21;
+const LIST_X = 10;
+const LIST_Y = 38;
+const LIST_W = 128;
+const ROW_H = 13;
+
+function tabRects() {
+  const tabs = T().manual.tabs;
+  let x = LIST_X;
+  return tabs.map((label) => {
+    const w = label.length * 6 + 10;
+    const r = { label, x, w };
+    x += w + 3;
+    return r;
+  });
+}
+
+let lastMx = -1;
+let lastMy = -1;
+
+export function updateManual(g: Game, input: Input, ctx: CanvasRenderingContext2D) {
+  const tabs = tabRects();
+  const count = () => manualEntries(g, ctx, g.manualTab).length;
+  const setTab = (i: number) => {
+    g.manualTab = (i + tabs.length) % tabs.length;
+    g.manualIdx = 0;
+    g.audio.ui();
+  };
+  if (input.hit('ArrowRight', 'KeyD')) setTab(g.manualTab + 1);
+  if (input.hit('ArrowLeft', 'KeyA')) setTab(g.manualTab - 1);
+  if (input.hit('ArrowDown', 'KeyS')) {
+    g.manualIdx = (g.manualIdx + 1) % count();
+    g.audio.ui();
+  }
+  if (input.hit('ArrowUp', 'KeyW')) {
+    g.manualIdx = (g.manualIdx - 1 + count()) % count();
+    g.audio.ui();
+  }
+  if (input.wheel) g.manualIdx = (g.manualIdx + input.wheel + count()) % count();
+
+  const moved = input.mx !== lastMx || input.my !== lastMy;
+  lastMx = input.mx;
+  lastMy = input.my;
+  if (input.leftPressed && input.my >= TAB_Y - 2 && input.my < TAB_Y + 12) {
+    const i = tabs.findIndex((r) => input.mx >= r.x && input.mx < r.x + r.w);
+    if (i >= 0) setTab(i);
+  }
+  const row = Math.floor((input.my - LIST_Y) / ROW_H);
+  if (input.mx >= LIST_X && input.mx < LIST_X + LIST_W && row >= 0 && row < count() && (moved || input.leftPressed)) g.manualIdx = row;
+  if (input.hit('Escape', 'Backspace') || (input.leftPressed && input.my >= H - 16)) {
+    g.setState(g.returnTo);
+    g.audio.ui();
+  }
+}
+
+export function renderManual(g: Game, ctx: CanvasRenderingContext2D) {
+  const m = T().manual;
+  ctx.fillStyle = '#05080c';
+  ctx.fillRect(0, 0, W, H);
+  drawText(ctx, `$ ${m.title}`, LIST_X, 8, '#6d8a78');
+
+  for (const [i, r] of tabRects().entries()) {
+    const on = g.manualTab === i;
+    ctx.fillStyle = on ? '#39ff88' : '#111a20';
+    ctx.fillRect(r.x, TAB_Y - 2, r.w, 13);
+    drawText(ctx, r.label, r.x + 5, TAB_Y, on ? '#02150a' : '#aab7c4');
+  }
+
+  const entries = manualEntries(g, ctx, g.manualTab);
+  entries.forEach((e, i) => {
+    const on = g.manualIdx === i;
+    if (on) {
+      ctx.fillStyle = '#16302a';
+      ctx.fillRect(LIST_X, LIST_Y + i * ROW_H - 2, LIST_W, ROW_H - 1);
+      ctx.fillStyle = '#39ff88';
+      ctx.fillRect(LIST_X, LIST_Y + i * ROW_H - 2, 2, ROW_H - 1);
+    }
+    drawText(ctx, e.label, LIST_X + 6, LIST_Y + i * ROW_H, on ? '#ffffff' : '#8fa3bf');
+  });
+
+  ctx.fillStyle = '#16202a';
+  ctx.fillRect(LIST_X + LIST_W + 5, LIST_Y - 2, 1, H - LIST_Y - 14);
+  entries[Math.min(g.manualIdx, entries.length - 1)].draw(LIST_X + LIST_W + 12, LIST_Y);
+
+  drawText(ctx, `${m.back}  |  ${m.nav}`, W / 2, H - 12, '#6d8a78', { align: 'center' });
+}
+
+// ---------- Cartão de inimigo novo ----------
+
+export function updateIntro(g: Game, input: Input) {
+  if (g.stateT > 0.25 && (input.hit('Enter', 'Space') || input.leftPressed)) g.nextIntro();
+}
+
+export function renderIntro(g: Game, ctx: CanvasRenderingContext2D) {
+  const kind = g.introQueue[0];
+  if (!kind) return;
+  const t = T().intro;
+  const boss = BOSSES.includes(kind);
+  ctx.fillStyle = 'rgba(2,6,10,.82)';
+  ctx.fillRect(0, 0, W, H);
+  const w = 410;
+  const h = 228;
+  const x = (W - w) / 2;
+  const y = 14;
+  ctx.fillStyle = '#080e13';
+  ctx.fillRect(x, y, w, h);
+  const accent = boss ? '#ff2a2a' : '#39ff88';
+  ctx.strokeStyle = accent;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.fillStyle = accent;
+  ctx.fillRect(x, y, w, 11);
+  drawText(ctx, boss ? t.newBoss : t.newEnemy, x + 5, y + 2, boss ? '#ffffff' : '#02150a');
+  enemySheet(g, ctx, kind, x + 10, y + 17, 64);
+  const blink = Math.floor(g.time * 2) % 2 === 0;
+  drawText(ctx, t.next, W / 2, y + h - 22, blink ? '#39ff88' : '#a8ffc0', { align: 'center' });
+  drawText(ctx, t.off, W / 2, y + h - 11, '#4b6655', { align: 'center' });
+}
+
+// ---------- Skins ----------
+
+const GRID_X = 18;
+const GRID_Y = 34;
+const CARD_W = 84;
+const CARD_H = 70;
+const GAP = 6;
+const COLS = 5;
+
+function cardRect(i: number) {
+  return { x: GRID_X + (i % COLS) * (CARD_W + GAP), y: GRID_Y + Math.floor(i / COLS) * (CARD_H + GAP) };
+}
+
+export function openSkins(g: Game) {
+  g.skinIdx = Math.max(0, SKINS.findIndex((s) => s.id === g.progress.skin));
+  g.setState('skins');
+}
+
+function equip(g: Game, i: number) {
+  const s = SKINS[i];
+  if (!g.isSkinUnlocked(s)) {
+    g.audio.ui(false);
+    return;
+  }
+  g.progress.skin = s.id;
+  g.saveProgress();
+  g.audio.command();
+}
+
+export function updateSkins(g: Game, input: Input) {
+  const n = SKINS.length;
+  const move = (d: number) => {
+    g.skinIdx = (g.skinIdx + d + n) % n;
+    g.audio.ui();
+  };
+  if (input.hit('ArrowRight', 'KeyD')) move(1);
+  if (input.hit('ArrowLeft', 'KeyA')) move(-1);
+  if (input.hit('ArrowDown', 'KeyS')) move(COLS);
+  if (input.hit('ArrowUp', 'KeyW')) move(-COLS);
+  const moved = input.mx !== lastMx || input.my !== lastMy;
+  lastMx = input.mx;
+  lastMy = input.my;
+  let hover = -1;
+  for (let i = 0; i < n; i++) {
+    const r = cardRect(i);
+    if (input.mx >= r.x && input.mx < r.x + CARD_W && input.my >= r.y && input.my < r.y + CARD_H) hover = i;
+  }
+  if (hover >= 0 && (moved || input.leftPressed)) g.skinIdx = hover;
+  if (input.hit('Enter', 'Space') || (input.leftPressed && hover >= 0)) equip(g, g.skinIdx);
+  if (input.hit('Escape', 'Backspace') || (input.leftPressed && input.my >= H - 16)) {
+    g.setState('menu');
+    g.audio.ui();
+  }
+}
+
+export function renderSkins(g: Game, ctx: CanvasRenderingContext2D) {
+  const t = T();
+  const u = t.skinsScreen;
+  ctx.fillStyle = '#05080c';
+  ctx.fillRect(0, 0, W, H);
+  drawText(ctx, u.title, W / 2, 10, '#f0efe8', { align: 'center', scale: 2 });
+
+  SKINS.forEach((s, i) => {
+    const { x, y } = cardRect(i);
+    const on = g.skinIdx === i;
+    const open = g.isSkinUnlocked(s);
+    const equipped = g.progress.skin === s.id;
+    ctx.fillStyle = on ? '#3a4c5c' : '#28343f';
+    ctx.fillRect(x, y, CARD_W, CARD_H);
+    ctx.strokeStyle = equipped ? '#39ff88' : on ? '#dfe6ee' : '#3f4f5c';
+    ctx.strokeRect(x + 0.5, y + 0.5, CARD_W - 1, CARD_H - 1);
+    const frames = skinSprites(s.id, g.time);
+    const fr = on && open ? 1 + (Math.floor(g.time * 7) % 2) : 0;
+    const cx = x + CARD_W / 2;
+    const feet = y + 56;
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
+    ctx.fillRect(cx - 10, feet - 1, 20, 2);
+    if (open) {
+      drawSprite(ctx, frames[fr], cx, feet, false, false, 3);
+    } else {
+      ctx.globalAlpha = 0.28;
+      drawSprite(ctx, frames[0], cx, feet, false, true, 3);
+      ctx.globalAlpha = 1;
+      drawText(ctx, '?', cx, feet - 34, '#ffd23d', { align: 'center', scale: 2 });
+    }
+    drawText(ctx, t.skins[s.id].name.slice(0, 13), cx, y + 59, open ? (equipped ? '#39ff88' : '#ffffff') : '#8493a0', { align: 'center' });
+  });
+
+  const s = SKINS[g.skinIdx];
+  const info = t.skins[s.id];
+  const open = g.isSkinUnlocked(s);
+  const py = GRID_Y + (CARD_H + GAP) * 2 + 2;
+  drawText(ctx, info.name, GRID_X, py, '#ffffff');
+  const tag = !open ? u.locked : g.progress.skin === s.id ? u.equipped : u.equip;
+  drawText(ctx, tag, W - GRID_X, py, !open ? '#ffd23d' : '#39ff88', { align: 'right' });
+  drawText(ctx, wrap(info.desc, 74)[0], GRID_X, py + 11, '#aab7c4');
+  if (!open && info.unlock) drawText(ctx, `${u.howTo}: ${info.unlock}`, GRID_X, py + 22, '#ffd23d');
+  drawText(ctx, u.nav, W / 2, H - 12, '#6d8a78', { align: 'center' });
+}

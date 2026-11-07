@@ -2,11 +2,25 @@ import { Sound } from '../core/audio';
 import { Input } from '../core/input';
 import { H, TILE, W, chance, clamp, dist, lerp, pick, shuffle, storageDel, storageGet, storageSet } from '../core/util';
 import { updateCombat, spawnPickupsForWaveClear, giveWeapon } from './combat';
-import { ENEMIES, KILL_WORDS, LEVELS, PERKS, STREAKS, WEAPONS, type EnemyDef, type EnemyKind, type LevelDef, type PerkDef, type WeaponId } from './data';
+import { ENEMIES, KILL_WORDS, LEVELS, PERKS, RUN_BASE, SKINS, STREAKS, VICTIM_NAMES, WEAPONS, type EnemyDef, type EnemyKind, type LevelDef, type PerkDef, type SkinDef, type WeaponId } from './data';
+import { LANGS, T, detectLang, getLang, setLang, type Lang } from './i18n';
 import { spawnEnemy, updateEnemies, spawnBoss } from './enemies';
 import { updateFx, type Gib, type Particle } from './fx';
 import { GameMap, buildMap } from './map';
 import { Terminal } from './terminal';
+
+/** O que causou o último dano no jogador, para a tela de morte explicar como evitar. */
+export type KillerId = EnemyKind | 'deploy' | 'corrupt' | 'beam';
+
+export interface Progress {
+  beaten: EnemyKind[];
+  bestStreak: number;
+  deaths: number;
+  seen: EnemyKind[];
+  skin: string;
+  notified: string[];
+  runs: number;
+}
 
 export interface Enemy {
   kind: EnemyKind;
@@ -72,6 +86,7 @@ export interface EnemyBullet {
   color: string;
   text: string | null;
   turn: number;
+  by: KillerId;
 }
 
 export interface Pickup {
@@ -214,7 +229,7 @@ export interface Player {
   dead: boolean;
 }
 
-export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory';
+export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log';
 type Phase = 'wave' | 'waveClear' | 'bossIntro' | 'boss' | 'bossDeath';
 
 interface Snapshot {
@@ -234,6 +249,7 @@ interface Snapshot {
 const SAVE_KEY = 'dead-pixel-save-v1';
 const BEST_KEY = 'dead-pixel-best-v1';
 const OPTS_KEY = 'dead-pixel-opts-v1';
+const PROGRESS_KEY = 'dead-pixel-progress-v1';
 
 export class Game {
   input: Input;
@@ -322,7 +338,24 @@ export class Game {
   goreLevel = 1.2;
   crtOn = true;
   musicOn = true;
+  tipsOn = true;
   god = false;
+
+  progress: Progress = { beaten: [], bestStreak: 0, deaths: 0, seen: [], skin: 'root', notified: [], runs: 0 };
+  logT = 0;
+  endPage = 0;
+  endT = 0;
+  endRun = 0;
+  introQueue: EnemyKind[] = [];
+  returnTo: State = 'menu';
+  manualTab = 0;
+  manualIdx = 0;
+  skinIdx = 0;
+  optionsIdx = 0;
+  lastKiller: KillerId = 'walker';
+  storyTip = 0;
+  toasts: { text: string; t: number }[] = [];
+  private hintsShown = new Set<string>();
 
   constructor(input: Input) {
     this.input = input;
@@ -337,12 +370,19 @@ export class Game {
       }
     }
     try {
-      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean };
+      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean; tips?: boolean; lang?: Lang };
+      if (o.tips !== undefined) this.tipsOn = o.tips;
+      setLang(o.lang && LANGS.includes(o.lang) ? o.lang : detectLang());
       if (o.gore !== undefined) this.goreLevel = o.gore;
       if (o.crt !== undefined) this.crtOn = o.crt;
       if (o.music !== undefined) this.musicOn = o.music;
     } catch {
-      /* opções padrão */
+      setLang(detectLang());
+    }
+    try {
+      this.progress = { ...this.progress, ...(JSON.parse(storageGet(PROGRESS_KEY) ?? '{}') as Partial<Progress>) };
+    } catch {
+      /* progresso novo */
     }
     this.audio.musicOn = this.musicOn;
     this.map = buildMap('office');
@@ -351,7 +391,7 @@ export class Game {
   }
 
   saveOptions() {
-    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, music: this.musicOn }));
+    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, music: this.musicOn, tips: this.tipsOn, lang: getLang() }));
     this.audio.musicOn = this.musicOn;
   }
 
@@ -362,6 +402,60 @@ export class Game {
       ammo: { pistol: Infinity, smg: 0, shotgun: 0, rail: 0, flame: 0, rocket: 0 },
       cd: 0, meleeCd: 0, meleeT: 0, sudoT: 0, overclockT: 0, wetSteps: 0, footAcc: 0, footSide: false, gunKick: 0, muzzle: 0, slowT: 0, orbitA: 0, gcAcc: 0, dead: false,
     };
+  }
+
+  /** Número da execução atual: a primeira partida já começa com várias anteriores. */
+  run() {
+    return RUN_BASE + 1 + this.progress.runs;
+  }
+
+  inEndingPages() {
+    return this.state === 'victory' && this.endPage < T().ending.pages(0).length;
+  }
+
+  saveProgress() {
+    storageSet(PROGRESS_KEY, JSON.stringify(this.progress));
+  }
+
+  isSkinUnlocked(s: SkinDef) {
+    const u = s.unlock;
+    if (!u) return true;
+    return 'boss' in u ? this.progress.beaten.includes(u.boss) : this.progress.bestStreak >= u.streak;
+  }
+
+  /** Avisa uma única vez cada skin que acabou de ser liberada. */
+  private checkUnlocks() {
+    for (const s of SKINS) {
+      if (s.unlock && this.isSkinUnlocked(s) && !this.progress.notified.includes(s.id)) {
+        this.progress.notified.push(s.id);
+        this.toasts.push({ text: T().hud.toastSkin(T().skins[s.id].name), t: 3.5 });
+        this.audio.command();
+      }
+    }
+    this.saveProgress();
+  }
+
+  /** Dica de contexto: no máximo uma vez por fase, e só com as dicas ligadas. */
+  hint(id: string, text: string) {
+    if (!this.tipsOn || this.hintsShown.has(id)) return;
+    this.hintsShown.add(id);
+    this.note = { text, t: 4.5 };
+  }
+
+  private queueIntro(kinds: EnemyKind[]) {
+    if (!this.tipsOn) return;
+    this.introQueue = kinds.filter((k) => !this.progress.seen.includes(k));
+    if (this.introQueue.length) this.setState('intro');
+  }
+
+  /** Fecha o cartão atual. Quando acaba a fila, o jogo continua de onde estava. */
+  nextIntro() {
+    const k = this.introQueue.shift();
+    if (k && !this.progress.seen.includes(k)) this.progress.seen.push(k);
+    this.saveProgress();
+    this.audio.ui();
+    if (!this.introQueue.length) this.setState('play');
+    else this.stateT = 0;
   }
 
   setState(s: State) {
@@ -468,6 +562,8 @@ export class Game {
     this.map.computeFlow(p.x, p.y);
     this.waveIdx = 0;
     this.storyT = 0;
+    this.hintsShown.clear();
+    this.storyTip = Math.floor(Math.random() * T().manual.tips.length);
     this.setState('story');
     this.audio.playMusic(this.level.music);
   }
@@ -485,8 +581,9 @@ export class Game {
     this.queue = shuffle(q);
     this.phase = 'wave';
     this.spawnAcc = 0;
-    this.note = { text: `wave ${this.waveIdx + 1}/${this.level.waves.length}: ${w.note}`, t: 3.2 };
+    this.note = { text: `${this.waveIdx + 1}/${this.level.waves.length}: ${T().levels[this.levelIdx].notes[this.waveIdx]}`, t: 3.2 };
     this.audio.warn();
+    this.queueIntro(w.spawns.map(([k]) => k));
   }
 
   startBoss() {
@@ -499,6 +596,7 @@ export class Game {
     this.audio.playMusic(this.level.theme === 'void' ? 'l5' : 'boss');
     this.glitch = 1;
     this.shake = 10;
+    this.queueIntro([this.level.boss]);
   }
 
   bossHpSum() {
@@ -569,7 +667,8 @@ export class Game {
   }
 
   nextFromClear() {
-    this.openPerks('level');
+    this.logT = 0;
+    this.setState('log');
   }
 
   retry() {
@@ -634,23 +733,34 @@ export class Game {
     this.streak++;
     this.streakT = 3.5;
     if (this.streak > this.maxStreak) this.maxStreak = this.streak;
+    if (this.streak > this.progress.bestStreak) {
+      this.progress.bestStreak = this.streak;
+      if (this.streak === 100) this.checkUnlocks();
+    }
     const mult = this.multiplier();
     this.score += e.def.score * mult;
     const p = this.player;
     p.ram = Math.min(p.maxRam, p.ram + e.def.ram * this.stats.ramGain);
     const next = STREAKS[this.nextStreak];
-    if (next && this.streak >= next[0]) {
-      this.announce = { text: next[1], t: 1.6, color: pick(['#ff2a2a', '#39ffe5', '#ffd23d', '#ff2bd6']) };
+    if (next && this.streak >= next) {
+      this.announce = { text: T().streaks[this.nextStreak], t: 1.6, color: pick(['#ff2a2a', '#39ffe5', '#ffd23d', '#ff2bd6']) };
       this.nextStreak++;
       this.glitch = Math.max(this.glitch, 0.5);
       this.audio.announce();
     }
     this.pid += 1 + Math.floor(Math.random() * 40);
     if (chance(e.boss ? 1 : 0.6)) {
-      this.killLog.push({ text: `[${pick(['SIGKILL', 'SIGSEGV', 'SIGTERM', 'OOM'])}] ${e.def.name} pid ${this.pid}`, t: 3.5, color: e.boss ? '#ff2a2a' : '#5f7a6a' });
+      this.killLog.push({ text: `[${pick(['SIGKILL', 'SIGSEGV', 'SIGTERM', 'OOM'])}] ${this.victimName(e)} pid ${this.pid}`, t: 3.5, color: e.boss ? '#ff2a2a' : '#5f7a6a' });
       if (this.killLog.length > 4) this.killLog.shift();
     }
     if (chance(0.16)) this.addText(e.x, e.y - e.hoff * 2 - 4, pick(KILL_WORDS), pick(['#fff', '#ffd23d', '#ff7ad9', '#39ffe5']));
+  }
+
+  /** Conforme o jogo avança, o log para de dizer "zumbi" e começa a dizer quem era. */
+  private victimName(e: Enemy) {
+    const human = e.kind === 'walker' || e.kind === 'runner' || e.kind === 'recruiter' || e.kind === 'segfault' || e.kind === 'stack';
+    const k = [0, 0.08, 0.35, 0.7, 1][this.levelIdx] ?? 1;
+    return human && chance(k) ? pick(VICTIM_NAMES) : T().enemies[e.kind].name;
   }
 
   multiplier() {
@@ -673,6 +783,9 @@ export class Game {
     this.dynLights.length = 0;
 
     this.term.update(rawDt);
+    const pl = this.player;
+    if (!pl.dead && pl.hp < pl.maxHp * 0.35 && pl.ram >= 200) this.hint('lowHp', T().hints.lowHp);
+    else if (pl.ram >= 450) this.hint('fullRam', T().hints.fullRam);
     updateCombat(this, dt, rawDt);
     updateEnemies(this, dt);
     updateFx(this, dt);
@@ -719,7 +832,7 @@ export class Game {
         this.phase = 'waveClear';
         this.phaseT = 1.3;
         this.audio.announce();
-        this.note = { text: 'wave limpa. abrindo pull request...', t: 1.3 };
+        this.note = { text: T().notes.waveClear, t: 1.3 };
         spawnPickupsForWaveClear(this);
       }
     } else if (this.phase === 'waveClear') {
@@ -754,6 +867,8 @@ export class Game {
 
   private finishLevel() {
     this.saveBest();
+    if (!this.progress.beaten.includes(this.level.boss)) this.progress.beaten.push(this.level.boss);
+    this.checkUnlocks();
     // crate esquecida no chão não pode custar uma arma
     for (const pk of this.pickups) if (pk.kind === 'weapon' && pk.weapon) giveWeapon(this, pk.weapon, false);
     const reward = this.level.reward;
@@ -764,8 +879,14 @@ export class Game {
     }
     if (this.levelIdx === LEVELS.length - 1) {
       this.clearSave();
+      // o final acontece em silêncio, e a próxima execução já fica contada
+      this.endRun = this.run();
+      this.progress.runs++;
+      this.saveProgress();
+      this.endPage = 0;
+      this.endT = 0;
       this.setState('victory');
-      this.audio.playMusic('menu');
+      this.audio.playMusic(null);
     } else {
       this.setState('clear');
     }
@@ -806,6 +927,11 @@ export class Game {
     if (this.note) {
       this.note.t -= rawDt;
       if (this.note.t <= 0) this.note = null;
+    }
+    // nada de aviso em cima do final: a skin liberada espera a última tela
+    if (this.toasts.length && !this.inEndingPages()) {
+      this.toasts[0].t -= rawDt;
+      if (this.toasts[0].t <= 0) this.toasts.shift();
     }
     for (let i = this.killLog.length - 1; i >= 0; i--) {
       this.killLog[i].t -= rawDt;
