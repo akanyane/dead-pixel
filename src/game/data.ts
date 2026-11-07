@@ -161,6 +161,12 @@ export const LEVELS: LevelDef[] = [
   },
 ];
 
+/** Player walking speed in pixels per second, before patches and overclock. */
+export const PLAYER_SPEED = 96;
+
+/** Bugs never move faster than this share of the player's walking speed, so walking away always works. */
+export const BUG_SPEED_CAP = 0.85;
+
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'hardcore';
 export const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard', 'hardcore'];
 
