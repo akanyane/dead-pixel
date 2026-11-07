@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2](https://github.com/akanyane/dead-pixel/compare/v1.3.1...v1.3.2) (2026-11-07)
+
+
+### Bug Fixes
+
+* make shots hit zombies pressed against the player and work near walls ([#13](https://github.com/akanyane/dead-pixel/issues/13)) ([576a097](https://github.com/akanyane/dead-pixel/commit/576a097dd45a052b07c6b67248927bb569eddec8))
+* stop touch input from getting stuck after screen changes ([576a097](https://github.com/akanyane/dead-pixel/commit/576a097dd45a052b07c6b67248927bb569eddec8))
+
 ## [1.3.1](https://github.com/akanyane/dead-pixel/compare/v1.3.0...v1.3.1) (2026-11-07)
 
 
