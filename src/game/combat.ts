@@ -22,6 +22,20 @@ export function giveWeapon(g: Game, id: WeaponId, equip = true) {
   }
 }
 
+/** Distance from the player's center to the gun tip. */
+const MUZZLE = 11;
+
+/**
+ * Where shots start. Normally the gun's height on the body, but in this top-down view that
+ * point sits inside the wall when the player hugs a wall to the north, so shots then leave
+ * from the feet, which are never inside a wall.
+ */
+function shotOrigin(g: Game) {
+  const p = g.player;
+  const y = g.map.blocksBullet(p.x, p.y - 7) ? p.y - 2 : p.y - 7;
+  return { x: p.x, y };
+}
+
 function gunTip(g: Game, len: number) {
   const p = g.player;
   return { x: p.x + Math.cos(p.aim) * len, y: p.y - 7 + Math.sin(p.aim) * len };
@@ -50,7 +64,7 @@ function fireWeapon(g: Game) {
   g.addShake(def.shake);
   g.audio.shoot(p.weapon);
 
-  const tip = gunTip(g, 11);
+  const tip = gunTip(g, MUZZLE);
   const sudo = p.sudoT > 0 ? 2 : 1;
   if (!def.flame) g.addLight(tip.x, tip.y, def.pellets > 1 ? 80 : 54, '#ffcc66');
 
@@ -61,11 +75,13 @@ function fireWeapon(g: Game) {
   }
 
   if (def.rail) {
-    fireRail(g, tip.x, tip.y, p.aim, def.dmg * s.dmg * sudo, def.color);
+    // like bullets, the beam starts at the body so it also hits whatever is pressed against the player
+    const { x: ox, y: oy } = shotOrigin(g);
+    fireRail(g, ox, oy, p.aim, def.dmg * s.dmg * sudo, def.color);
     if (s.multi > 0) {
       for (let i = 1; i <= s.multi; i++) {
-        fireRail(g, tip.x, tip.y, p.aim + 0.09 * i, def.dmg * s.dmg * sudo * 0.5, def.color);
-        fireRail(g, tip.x, tip.y, p.aim - 0.09 * i, def.dmg * s.dmg * sudo * 0.5, def.color);
+        fireRail(g, ox, oy, p.aim + 0.09 * i, def.dmg * s.dmg * sudo * 0.5, def.color);
+        fireRail(g, ox, oy, p.aim - 0.09 * i, def.dmg * s.dmg * sudo * 0.5, def.color);
       }
     }
     return;
@@ -79,8 +95,9 @@ function fireWeapon(g: Game) {
     }
     const crit = chance(s.crit);
     const sp = def.speed * rand(0.92, 1.06);
-    g.bullets.push({
-      x: tip.x, y: tip.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+    const origin = shotOrigin(g);
+    const b: Bullet = {
+      x: origin.x, y: origin.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
       dmg: def.dmg * s.dmg * sudo * (crit ? 2.5 : 1),
       life: def.life * rand(0.85, 1.1),
       pierce: def.pierce + s.pierce,
@@ -93,7 +110,10 @@ function fireWeapon(g: Game) {
       burn: def.flame ? 1.6 : s.burn * 2,
       hit: def.pierce + s.pierce > 0 ? new Set() : null,
       trail: !!def.explode,
-    });
+    };
+    // the bullet leaves from the body and travels to the gun tip right away: zombies pressed
+    // against the player get hit, and a gun poking into a wall stops at the wall
+    if (sweepBullet(g, b, MUZZLE / sp)) g.bullets.push(b);
   }
 }
 
@@ -511,12 +531,36 @@ function forNear(g: Game, x: number, y: number, fn: (e: Enemy) => boolean | void
 
 export { forNear };
 
+/** Longest distance a bullet moves between collision checks, so nothing small slips between two frames. */
+const BULLET_STEP = 4;
+
 function updateBullet(g: Game, b: Bullet, dt: number): boolean {
   b.life -= dt;
   if (b.life <= 0) {
     if (b.explode) explosion(g, b.x, b.y, b.explode, b.dmg / g.stats.dmg, true);
     return false;
   }
+  if (!sweepBullet(g, b, dt)) return false;
+  if (b.flame) {
+    if (chance(0.6)) spawnPart(g, P.Fire, b.x, b.y, 0, b.vx * 0.2, b.vy * 0.2, 0, rand(0.1, 0.3), pick(['#ffec3d', '#ff9a1a', '#ff5a1a']), randInt(1, 4));
+    if (chance(0.25)) g.addLight(b.x, b.y, 30, '#ff7a1a');
+    if (chance(0.015)) splat(g, b.x, b.y, 3, 3, ['#111', '#222']);
+  } else if (b.trail) {
+    spawnPart(g, P.Smoke, b.x, b.y, 0, rand(-6, 6), rand(-6, 6), 0, 0.6, '#555', 2);
+    spawnPart(g, P.Fire, b.x, b.y, 0, -b.vx * 0.1, -b.vy * 0.1, 0, 0.14, '#ffae3a', 2);
+    g.addLight(b.x, b.y, 34, '#ff7a1a');
+  }
+  return true;
+}
+
+/** Moves a bullet for `dt` in short steps, checking walls, enemies and barrels at each one. */
+function sweepBullet(g: Game, b: Bullet, dt: number): boolean {
+  const steps = Math.max(1, Math.ceil((Math.hypot(b.vx, b.vy) * dt) / BULLET_STEP));
+  for (let i = 0; i < steps; i++) if (!stepBullet(g, b, dt / steps)) return false;
+  return true;
+}
+
+function stepBullet(g: Game, b: Bullet, dt: number): boolean {
   const nx = b.x + b.vx * dt;
   const ny = b.y + b.vy * dt;
   if (g.map.blocksBullet(nx, ny)) {
@@ -539,16 +583,6 @@ function updateBullet(g: Game, b: Bullet, dt: number): boolean {
   }
   b.x = nx;
   b.y = ny;
-
-  if (b.flame) {
-    if (chance(0.6)) spawnPart(g, P.Fire, b.x, b.y, 0, b.vx * 0.2, b.vy * 0.2, 0, rand(0.1, 0.3), pick(['#ffec3d', '#ff9a1a', '#ff5a1a']), randInt(1, 4));
-    if (chance(0.25)) g.addLight(b.x, b.y, 30, '#ff7a1a');
-    if (chance(0.015)) splat(g, b.x, b.y, 3, 3, ['#111', '#222']);
-  } else if (b.trail) {
-    spawnPart(g, P.Smoke, b.x, b.y, 0, rand(-6, 6), rand(-6, 6), 0, 0.6, '#555', 2);
-    spawnPart(g, P.Fire, b.x, b.y, 0, -b.vx * 0.1, -b.vy * 0.1, 0, 0.14, '#ffae3a', 2);
-    g.addLight(b.x, b.y, 34, '#ff7a1a');
-  }
 
   let alive = true;
   const ang = Math.atan2(b.vy, b.vx);
