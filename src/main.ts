@@ -1,4 +1,5 @@
 import { Presenter } from './core/crt';
+import { canInstall, enterFullscreen, fullscreenSupported, isFullscreen, isStandalone, listenForInstall, needsRotation, promptInstall, registerServiceWorker, toggleFullscreen, updateRotateOverlay } from './core/platform';
 import { drawText, wrap } from './core/font';
 import { ACTIONS, Input, TOUCH_BUTTONS, keyLabel } from './core/input';
 import { H, W, makeCanvas, rand } from './core/util';
@@ -20,6 +21,12 @@ const game = new Game(input);
 presenter.crtEnabled = game.crtOn;
 
 input.onFirstGesture = () => game.audio.init();
+registerServiceWorker();
+listenForInstall(() => undefined);
+// on phones, the first tap also goes fullscreen (it needs a gesture, and touchend counts as one)
+window.addEventListener('touchend', () => {
+  if (!isStandalone()) void enterFullscreen();
+}, { once: true });
 // total kills must not be lost if the tab is closed in the middle of a level
 window.addEventListener('pagehide', () => game.saveProgress());
 
@@ -102,6 +109,8 @@ function menuItems(): MenuItem[] {
   items.push({ label: t.menu.achievements, act: () => openAchievements(game, 'menu') });
   items.push({ label: t.menu.manual, act: () => openManual('menu') });
   items.push({ label: t.menu.options, act: () => openOptions('menu') });
+  // only offered when the browser says the game can be installed
+  if (canInstall()) items.push({ label: t.menu.install, act: () => void promptInstall() });
   items.push({ label: langLabel(), act: cycleLang });
   return items;
 }
@@ -154,6 +163,7 @@ function optionItems(): MenuItem[] {
     { label: `${o.tips}: ${onOff(game.tipsOn)}`, act: () => { game.tipsOn = !game.tipsOn; game.saveOptions(); } },
     { label: `${o.highContrast}: ${onOff(game.highContrast)}`, act: () => { game.highContrast = !game.highContrast; game.saveOptions(); } },
     { label: o.controls, act: openControls },
+    ...(fullscreenSupported() ? [{ label: `${o.fullscreen}: ${onOff(isFullscreen())}`, act: () => void toggleFullscreen() }] : []),
     { label: langLabel(), act: cycleLang },
     { label: o.back, act: () => game.setState(game.returnTo) },
   ];
@@ -168,6 +178,13 @@ function pauseItems(): MenuItem[] {
     { label: t.menu.options, act: () => openOptions('pause') },
     { label: t.pause.quit, act: () => game.quitToMenu() },
   ];
+}
+
+function pauseGame() {
+  if (game.term.open) game.term.hide();
+  game.pauseIdx = 0;
+  game.setState('pause');
+  game.audio.setMuffled(true);
 }
 
 let lastMx = -1;
@@ -484,11 +501,7 @@ function handleInput(dt: number) {
       break;
     }
     case 'play':
-      if (input.actHit('pause') && !game.term.open && !game.term.justClosed) {
-        game.pauseIdx = 0;
-        game.setState('pause');
-        game.audio.setMuffled(true);
-      }
+      if (input.actHit('pause') && !game.term.open && !game.term.justClosed) pauseGame();
       break;
     case 'pause':
       game.pauseIdx = runList(pauseItems(), game.pauseIdx, 96, 16, 92);
@@ -564,6 +577,9 @@ let last = performance.now();
 function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  // turning the phone upright, or leaving the tab, pauses the game
+  updateRotateOverlay(T().boot.rotate);
+  if (game.state === 'play' && !game.player.dead && (needsRotation() || document.hidden)) pauseGame();
   input.uiMode = game.state !== 'play' || game.term.open;
   input.poll(dt);
   game.update(dt);

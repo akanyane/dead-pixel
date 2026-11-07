@@ -79,6 +79,19 @@ Each boss you defeat unlocks a recovered log that reveals more of what happened.
 
 Open **[akanyane.github.io/dead-pixel](https://akanyane.github.io/dead-pixel/)** and that's it. The site updates itself on every change to `main`.
 
+### On a phone or tablet
+
+Hold the device sideways: in portrait the game pauses and asks you to turn it. On Android, the first tap also switches to fullscreen and locks the screen to landscape. You can toggle fullscreen at any time under **OPTIONS > FULLSCREEN**.
+
+### Install it and play offline
+
+The game is a Progressive Web App. After the first visit, everything it needs is cached, so it keeps working without a connection.
+
+- **Chrome, Edge and Android:** use **INSTALL THE GAME** in the main menu (it shows up when the browser allows installing), or the install icon in the address bar.
+- **iPhone and iPad:** in Safari, tap **Share > Add to Home Screen**. The installed app opens in fullscreen.
+
+New releases are picked up the next time the game opens with a connection.
+
 ### From source
 
 You need [Node.js](https://nodejs.org/) 20 or newer.
@@ -337,6 +350,7 @@ They reward combat (streaks, total kills, a single `rm -rf` terminating 20 proce
 | **Tips and cards** | New enemy cards, death tips and context hints |
 | **High contrast hazards** | Enemy shots get a black and white outline, danger zones get diagonal stripes, and warning lines turn white, so nothing depends on telling red from green |
 | **Controls** | Remap movement, dash, strike, terminal and pause |
+| **Fullscreen** | Fills the whole screen (where the browser supports it) |
 | **Language** | English, Portuguese or Spanish |
 
 ## Languages
@@ -432,6 +446,7 @@ dead-pixel/
 │   │   ├── crt.ts          # WebGL post-processing
 │   │   ├── font.ts         # Bitmap font with accents
 │   │   ├── input.ts        # Keyboard, mouse, gamepad, touch and key bindings
+│   │   ├── platform.ts     # Fullscreen, rotate prompt, offline cache and install prompt
 │   │   └── util.ts         # Math, seeded random and helpers
 │   └── game/
 │       ├── data.ts         # ⭐ Enemies, weapons, perks, skins and levels: balance here
@@ -448,7 +463,7 @@ dead-pixel/
 │       ├── hud.ts          # Interface and screens
 │       └── sprites.ts      # Pixel art as text
 ├── tests/                  # Playwright smoke tests
-├── public/og.jpg           # Link preview image
+├── public/                 # Manifest, app icons and link preview image
 ├── docs/screenshots/       # Images used in this README
 ├── .github/workflows/      # CI, release and deploy automation
 └── release-please-config.json
@@ -472,11 +487,11 @@ __g.beginPlay();       // skip the story
 __g.player.ram = 512;  // fill up RAM
 ```
 
-The smoke tests boot the game, play part of a level, check that the daily run is identical across two sessions and that endless mode stays locked until the ending. The `ci.yml` workflow runs the typecheck, the build and these tests on every pull request.
+The smoke tests boot the game, play part of a level, check that the daily run is identical across two sessions, that endless mode stays locked until the ending, and that the production build loads offline once its service worker has cached it. The `ci.yml` workflow runs the typecheck, the build and these tests on every pull request.
 
 ## Deploying the game
 
-`npm run build` produces a static site in `dist/` with relative paths. It works on any static host, including subfolders: Vercel, Netlify, Cloudflare Pages or GitHub Pages.
+`npm run build` produces a static site in `dist/` with relative paths, plus a generated `sw.js` that lists every file to cache for offline play. It works on any static host, including subfolders: Vercel, Netlify, Cloudflare Pages or GitHub Pages.
 
 The official version lives on GitHub Pages: the `deploy-pages.yml` workflow builds and publishes the game on every push to `main`. In a fork, enable **Settings > Pages > Source: GitHub Actions** to use the same flow.
 

@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 // Smoke tests run against the dev server, because only dev builds expose the
 // game object as `window.__g` for tests to drive.
 const PORT = 5199;
+const PREVIEW_PORT = 5198;
 
 export default defineConfig({
   testDir: 'tests',
@@ -30,10 +31,19 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}/`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: `npx vite --port ${PORT} --strictPort`,
+      url: `http://localhost:${PORT}/`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      // the offline test needs the production build, where the service worker exists
+      command: `npm run build && npx vite preview --port ${PREVIEW_PORT} --strictPort`,
+      url: `http://localhost:${PREVIEW_PORT}/`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
 });
