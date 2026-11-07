@@ -4,7 +4,7 @@ import { LEVELS, WEAPONS, WEAPON_ORDER, type PerkDef } from './data';
 import type { Game } from './game';
 import { T } from './i18n';
 import { SPR, drawSprite } from './sprites';
-import { COMMANDS } from './terminal';
+import { COMMANDS, TERM_BOX, commandRowY } from './terminal';
 
 export function bar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, k: number, col: string, back = '#14141c') {
   ctx.fillStyle = '#000';
@@ -26,7 +26,7 @@ const TAG_COLOR: Record<PerkDef['tag'], string> = {
   refactor: '#ff7ad9',
 };
 
-export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
+export function renderHud(g: Game, ctx: CanvasRenderingContext2D, controlsHint = T().hud.controlsHint) {
   const p = g.player;
   const t = T();
   const isVoid = g.map.theme === 'void';
@@ -71,7 +71,8 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
     bar(ctx, bx, 17, bw, 6, k, isVoid ? '#000' : '#ff2a2a', isVoid ? '#cfcfc8' : '#14141c');
   } else if (g.phase === 'wave') {
     const left = g.queue.length + g.enemies.length;
-    drawText(ctx, t.hud.wave(g.waveIdx + 1, g.level.waves.length, left), W / 2 + 14, 8, text, { align: 'center', shadow });
+    const label = g.isArcade() ? t.arcade.wave(g.arcadeWave, left) : t.hud.wave(g.waveIdx + 1, g.level.waves.length, left);
+    drawText(ctx, label, W / 2 + 14, 8, text, { align: 'center', shadow });
   }
 
   // Aviso
@@ -106,8 +107,9 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
   }
 
   // Dica de controles no começo do jogo
-  if (g.levelIdx === 0 && g.waveIdx === 0 && g.time - g.levelStartT < 14 && !g.term.open) {
-    drawText(ctx, t.hud.controlsHint, W / 2, H - 25, '#ffffff', { align: 'center', shadow: '#000' });
+  const firstWave = g.isArcade() ? g.arcadeWave === 1 : g.levelIdx === 0 && g.waveIdx === 0;
+  if (firstWave && g.time - g.levelStartT < 14 && !g.term.open) {
+    drawText(ctx, controlsHint === T().menu.controls ? t.hud.controlsHint : controlsHint, W / 2, H - 25, '#ffffff', { align: 'center', shadow: '#000' });
   }
 
   // Barra tmux
@@ -172,10 +174,7 @@ export function renderToast(g: Game, ctx: CanvasRenderingContext2D) {
 
 function renderTerminal(g: Game, ctx: CanvasRenderingContext2D) {
   const t = g.term;
-  const x = 8;
-  const w = W - 16;
-  const h = 102;
-  const y = H - 15 - h;
+  const { x, w, h, y } = TERM_BOX;
   ctx.fillStyle = 'rgba(2,10,6,.93)';
   ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = '#39ff88';
@@ -193,18 +192,25 @@ function renderTerminal(g: Game, ctx: CanvasRenderingContext2D) {
     drawText(ctx, l.text.slice(0, Math.floor(leftW / 6)), x + 4, y + 12 + i * 9, l.color);
   });
   const cursor = Math.floor(t.cursorT * 3) % 2 === 0 ? '_' : ' ';
-  drawText(ctx, `# ${t.line}${cursor}`, x + 4, y + h - 12, '#ffffff');
+  const pad = g.input.usingPad;
+  if (pad || g.input.touchActive) drawText(ctx, pad ? T().pad.term : T().touch.term, x + 4, y + h - 12, '#ffd23d');
+  else drawText(ctx, `# ${t.line}${cursor}`, x + 4, y + h - 12, '#ffffff');
 
   // Comandos com custo
-  const cx = x + leftW + 6;
+  const cx = TERM_BOX.listX;
   ctx.fillStyle = '#123';
   ctx.fillRect(cx - 3, y + 10, 1, h - 11);
   const match = new Set(t.matches().map((c) => c.name));
   COMMANDS.forEach((c, i) => {
     const can = g.player.ram >= c.cost;
     const hit = match.has(c.name) && t.line.trim().length > 0;
-    const color = hit ? '#ffffff' : can ? '#39ff88' : '#3b5245';
-    drawText(ctx, `${c.name.padEnd(9)}${String(c.cost).padStart(3)}MB`, cx, y + 12 + i * 10, color);
+    const chosen = pad && t.sel === i;
+    if (chosen) {
+      ctx.fillStyle = can ? '#39ff88' : '#3b5245';
+      ctx.fillRect(cx - 2, commandRowY(i) - 1, x + w - cx - 1, TERM_BOX.row - 1);
+    }
+    const color = chosen ? '#02150a' : hit ? '#ffffff' : can ? '#39ff88' : '#3b5245';
+    drawText(ctx, `${c.name.padEnd(9)}${String(c.cost).padStart(3)}MB`, cx, commandRowY(i), color);
   });
 }
 
@@ -259,7 +265,8 @@ export function renderStory(g: Game, ctx: CanvasRenderingContext2D) {
   ctx.fillRect(0, 0, W, H);
   const lvl = t.levels[g.levelIdx];
   drawText(ctx, t.story.phase(g.levelIdx + 1, LEVELS.length), 34, 30, '#6d8a78');
-  drawText(ctx, `run ${String(g.run()).padStart(4, '0')}`, W - 34, 30, '#2f3d36', { align: 'right' });
+  const diff = g.difficulty === 'normal' ? '' : `${t.modes.difficulty[g.difficulty]}  |  `;
+  drawText(ctx, `${diff}run ${String(g.run()).padStart(4, '0')}`, W - 34, 30, '#2f3d36', { align: 'right' });
   drawText(ctx, lvl.title, 34, 42, '#ff2a2a', { scale: 4, shadow: '#400' });
   drawText(ctx, `$ cd ${g.level.dir}`, 34, 84, '#39ff88');
   const cps = 42;
@@ -348,8 +355,25 @@ export function renderDead(g: Game, ctx: CanvasRenderingContext2D) {
   drawText(ctx, t.dead.killedBy(info.name), 42, boxY + 4, '#ff8a8a');
   lines.forEach((l, i) => drawText(ctx, l, 42, boxY + 15 + i * 10, '#dfe6ee'));
 
+  const blink = Math.floor(g.time * 2) % 2 ? '#39ff88' : '#a8ffc0';
+  if (g.isArcade()) {
+    // arcade: uma vida só, e o resultado pode ser compartilhado
+    const a = t.arcade;
+    drawText(ctx, `${a.over}: ${a.reached(g.arcadeWave)}`, W / 2, 160, '#ffd23d', { align: 'center' });
+    drawText(ctx, `${t.dead.score} ${g.score}   |   ${t.dead.kills} ${g.kills}${g.newBest ? `   |   ${a.newBest}` : ''}`, W / 2, 172, '#8fa3bf', { align: 'center' });
+    drawText(ctx, a.retry, W / 2, 184, blink, { align: 'center' });
+    drawText(ctx, a.copy, W / 2, 197, '#a8ff3e', { align: 'center' });
+    drawText(ctx, t.dead.menu, W / 2, 214, '#6d8a78', { align: 'center' });
+    return;
+  }
   drawText(ctx, `${t.dead.score} ${g.score}   |   ${t.dead.kills} ${g.kills}   |   ${t.dead.best} ${Math.max(g.best, g.score)}`, W / 2, 170, '#8fa3bf', { align: 'center' });
-  drawText(ctx, t.dead.retry, W / 2, 190, Math.floor(g.time * 2) % 2 ? '#39ff88' : '#a8ffc0', { align: 'center', scale: 2 });
+  if (g.difficulty === 'hardcore') {
+    drawText(ctx, t.dead.hardcore, W / 2, 186, '#ff5a5a', { align: 'center' });
+    drawText(ctx, t.dead.hardcoreRetry, W / 2, 200, blink, { align: 'center' });
+    drawText(ctx, t.dead.menu, W / 2, 214, '#6d8a78', { align: 'center' });
+    return;
+  }
+  drawText(ctx, t.dead.retry, W / 2, 190, blink, { align: 'center', scale: 2 });
   drawText(ctx, t.dead.menu, W / 2, 214, '#6d8a78', { align: 'center' });
 }
 

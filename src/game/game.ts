@@ -1,9 +1,10 @@
 import { Sound } from '../core/audio';
 import { Input } from '../core/input';
-import { H, TILE, W, chance, clamp, dist, lerp, pick, shuffle, storageDel, storageGet, storageSet } from '../core/util';
+import { DEFAULT_BINDINGS, type Action } from '../core/input';
+import { H, TILE, W, chance, clamp, dist, hashSeed, lerp, pick, shuffle, storageDel, storageGet, storageSet, withSeed } from '../core/util';
 import { ACHIEVEMENTS, PLATINUM } from './achievements';
 import { updateCombat, spawnPickupsForWaveClear, giveWeapon } from './combat';
-import { ENEMIES, KILL_WORDS, LEVELS, PERKS, RUN_BASE, SKINS, STREAKS, VICTIM_NAMES, WEAPONS, type EnemyDef, type EnemyKind, type LevelDef, type PerkDef, type SkinDef, type WeaponId } from './data';
+import { ARCADE_BOSSES, ARCADE_POOL, ARCADE_WAVES, DIFFICULTY, ENEMIES, KILL_WORDS, LEVELS, PERKS, RUN_BASE, SKINS, STREAKS, VICTIM_NAMES, WEAPONS, type Difficulty, type EnemyDef, type EnemyKind, type LevelDef, type PerkDef, type SkinDef, type WaveDef, type WeaponId } from './data';
 import { LANGS, T, detectLang, getLang, setLang, type Lang } from './i18n';
 import { spawnEnemy, updateEnemies, spawnBoss } from './enemies';
 import { updateFx, type Gib, type Particle } from './fx';
@@ -234,7 +235,15 @@ export interface Player {
   dead: boolean;
 }
 
-export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log' | 'achievements';
+export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log' | 'achievements' | 'controls';
+
+/** História, modo infinito ou run diária. Os dois últimos são o "arcade": sem história e com uma vida só. */
+export type Mode = 'story' | 'endless' | 'daily';
+
+interface ArcadeBest {
+  endless: { wave: number; score: number };
+  daily: { date: string; wave: number; score: number };
+}
 type Phase = 'wave' | 'waveClear' | 'bossIntro' | 'boss' | 'bossDeath';
 
 interface Snapshot {
@@ -249,12 +258,17 @@ interface Snapshot {
   score: number;
   kills: number;
   deaths: number;
+  difficulty?: Difficulty;
 }
 
 const SAVE_KEY = 'dead-pixel-save-v1';
 const BEST_KEY = 'dead-pixel-best-v1';
 const OPTS_KEY = 'dead-pixel-opts-v1';
 const PROGRESS_KEY = 'dead-pixel-progress-v1';
+const ARCADE_KEY = 'dead-pixel-arcade-v1';
+
+/** Data de hoje em UTC: a run diária é a mesma no mundo todo. */
+export const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export class Game {
   input: Input;
@@ -266,6 +280,16 @@ export class Game {
   map!: GameMap;
   levelIdx = 0;
   level!: LevelDef;
+  mode: Mode = 'story';
+  difficulty: Difficulty = 'normal';
+  arcadeSeed = 0;
+  arcadeStage = 0;
+  /** Número da wave atual no arcade, contando desde o começo da run. */
+  arcadeWave = 0;
+  dailyDate = '';
+  arcadeBest: ArcadeBest = { endless: { wave: 0, score: 0 }, daily: { date: '', wave: 0, score: 0 } };
+  newBest = false;
+  copiedT = 0;
   player!: Player;
   stats: Stats = baseStats();
   perks: Record<string, number> = {};
@@ -346,7 +370,9 @@ export class Game {
   musicVol = 7;
   sfxVol = 10;
   tipsOn = true;
+  highContrast = false;
   god = false;
+  bindings: Record<Action, string[]> = structuredClone(DEFAULT_BINDINGS);
 
   progress: Progress = { beaten: [], bestStreak: 0, deaths: 0, seen: [], skin: 'root', notified: [], runs: 0, achievements: [], kills: 0, meleeKills: 0, lore: [] };
   achievementIdx = 0;
@@ -364,6 +390,10 @@ export class Game {
   manualIdx = 0;
   skinIdx = 0;
   optionsIdx = 0;
+  controlsIdx = 0;
+  rebinding: Action | null = null;
+  menuPage: 'main' | 'play' = 'main';
+  playIdx = 1;
   lastKiller: KillerId = 'walker';
   storyTip = 0;
   toasts: { text: string; t: number }[] = [];
@@ -371,6 +401,7 @@ export class Game {
 
   constructor(input: Input) {
     this.input = input;
+    input.bindings = this.bindings;
     this.term = new Terminal(this);
     this.best = Number(storageGet(BEST_KEY) ?? 0) || 0;
     const raw = storageGet(SAVE_KEY);
@@ -382,8 +413,10 @@ export class Game {
       }
     }
     try {
-      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean; musicVol?: number; sfxVol?: number; tips?: boolean; lang?: Lang };
+      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean; musicVol?: number; sfxVol?: number; tips?: boolean; lang?: Lang; highContrast?: boolean; bindings?: Partial<Record<Action, string[]>> };
       if (o.tips !== undefined) this.tipsOn = o.tips;
+      if (o.highContrast !== undefined) this.highContrast = o.highContrast;
+      if (o.bindings) for (const a of Object.keys(DEFAULT_BINDINGS) as Action[]) if (Array.isArray(o.bindings[a]) && o.bindings[a].length) this.bindings[a] = o.bindings[a];
       setLang(o.lang && LANGS.includes(o.lang) ? o.lang : detectLang());
       if (o.gore !== undefined) this.goreLevel = o.gore;
       if (o.crt !== undefined) this.crtOn = o.crt;
@@ -393,6 +426,11 @@ export class Game {
       if (o.sfxVol !== undefined) this.sfxVol = clamp(Math.round(o.sfxVol), 0, 10);
     } catch {
       setLang(detectLang());
+    }
+    try {
+      this.arcadeBest = { ...this.arcadeBest, ...(JSON.parse(storageGet(ARCADE_KEY) ?? '{}') as Partial<ArcadeBest>) };
+    } catch {
+      /* sem recordes de arcade ainda */
     }
     try {
       this.progress = { ...this.progress, ...(JSON.parse(storageGet(PROGRESS_KEY) ?? '{}') as Partial<Progress>) };
@@ -408,7 +446,8 @@ export class Game {
   }
 
   saveOptions() {
-    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, musicVol: this.musicVol, sfxVol: this.sfxVol, tips: this.tipsOn, lang: getLang() }));
+    this.bindings = this.input.bindings;
+    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, musicVol: this.musicVol, sfxVol: this.sfxVol, tips: this.tipsOn, highContrast: this.highContrast, bindings: this.bindings, lang: getLang() }));
     this.audio.setVolumes(this.musicVol / 10, this.sfxVol / 10);
   }
 
@@ -502,7 +541,32 @@ export class Game {
     this.stateT = 0;
   }
 
-  newGame() {
+  isArcade() {
+    return this.mode !== 'story';
+  }
+
+  /** Multiplicadores da dificuldade atual. O arcade é sempre no normal, para os recordes serem comparáveis. */
+  diff() {
+    return DIFFICULTY[this.mode === 'story' ? this.difficulty : 'normal'];
+  }
+
+  /** HP dos inimigos comuns: sobe por fase na história e por wave no arcade. */
+  enemyHpScale() {
+    const base = this.isArcade() ? 1 + (this.arcadeWave - 1) * 0.06 : 1 + this.levelIdx * 0.16;
+    return base * this.diff().hp;
+  }
+
+  /** HP dos chefes: no arcade, cada volta completa pelos 5 chefes deixa todos bem mais fortes. */
+  bossHpMul() {
+    const loop = this.isArcade() ? Math.floor(this.arcadeStage / ARCADE_BOSSES.length) : 0;
+    return (1 + loop * 0.8) * this.diff().hp;
+  }
+
+  enemySpeedScale() {
+    return this.isArcade() ? 1 + Math.min(this.arcadeWave, 30) * 0.008 : 1 + this.levelIdx * 0.04;
+  }
+
+  private resetRun() {
     this.stats = baseStats();
     this.perks = {};
     this.player = this.newPlayer();
@@ -511,16 +575,98 @@ export class Game {
     this.kills = 0;
     this.deaths = 0;
     this.maxStreak = 0;
+  }
+
+  newGame(difficulty: Difficulty = this.difficulty) {
+    this.mode = 'story';
+    this.difficulty = difficulty;
+    this.resetRun();
     this.startLevel(0);
+  }
+
+  /** Começa uma run de arcade. A diária usa a data como seed; a infinita, uma seed nova a cada vez. */
+  startArcade(mode: 'endless' | 'daily') {
+    this.mode = mode;
+    this.dailyDate = todayUTC();
+    this.arcadeSeed = mode === 'daily' ? hashSeed(`dead-pixel:${this.dailyDate}`) : Math.floor(Math.random() * 2 ** 32);
+    this.arcadeStage = 0;
+    this.arcadeWave = 0;
+    this.newBest = false;
+    this.resetRun();
+    this.startStage(0);
+  }
+
+  /** Uma arena do arcade: tema e chefe em ciclo, com waves geradas a partir da seed. */
+  private startStage(stage: number) {
+    this.arcadeStage = stage;
+    const i = stage % LEVELS.length;
+    this.levelIdx = i;
+    const boss = ARCADE_BOSSES[stage % ARCADE_BOSSES.length];
+    this.level = { ...LEVELS[i], boss, reward: LEVELS[i].reward, waves: withSeed(this.arcadeSeed + stage * 7919, () => this.arcadeWaves(stage)) };
+    withSeed(this.arcadeSeed + stage * 104729, () => this.prepareArena());
+    this.audio.playMusic(this.level.music);
+    this.setState('play');
+    this.levelStartT = this.time;
+    this.startWave();
+    if (stage > 0) this.note = { text: T().arcade.arena(T().levels[i].title), t: 3 };
+  }
+
+  private arcadeWaves(stage: number): WaveDef[] {
+    const pool = ARCADE_POOL.filter((p) => p.from <= stage);
+    const total = pool.reduce((n, p) => n + p.weight, 0);
+    const waves: WaveDef[] = [];
+    for (let w = 0; w < ARCADE_WAVES; w++) {
+      const n = stage * ARCADE_WAVES + w + 1;
+      const count = Math.round(16 + n * 5.5);
+      const tally = new Map<EnemyKind, number>();
+      for (let k = 0; k < count; k++) {
+        let r = Math.random() * total;
+        const pickd = pool.find((p) => (r -= p.weight) < 0) ?? pool[0];
+        tally.set(pickd.kind, (tally.get(pickd.kind) ?? 0) + 1);
+      }
+      waves.push({ spawns: [...tally.entries()], rate: Math.min(6.5, 1.6 + n * 0.22), maxAlive: Math.min(72, Math.round(20 + n * 2.2)) });
+    }
+    return waves;
+  }
+
+  /** Texto do resultado para colar em qualquer lugar. */
+  shareText() {
+    const t = T().arcade;
+    const label = this.mode === 'daily' ? t.dailyLabel(this.dailyDate) : t.endlessLabel;
+    return `${t.share(label, this.arcadeWave, this.score, this.kills)}\nhttps://akanyane.github.io/dead-pixel/`;
+  }
+
+  /** Chamado quando o jogador morre de vez: guarda recordes do arcade e apaga a partida no hardcore. */
+  onPlayerDeath() {
+    if (this.isArcade()) {
+      const b = this.arcadeBest;
+      if (this.mode === 'endless') {
+        if (this.arcadeWave > b.endless.wave || (this.arcadeWave === b.endless.wave && this.score > b.endless.score)) {
+          b.endless = { wave: this.arcadeWave, score: this.score };
+          this.newBest = true;
+        }
+      } else {
+        if (b.daily.date !== this.dailyDate) b.daily = { date: this.dailyDate, wave: 0, score: 0 };
+        if (this.arcadeWave > b.daily.wave || (this.arcadeWave === b.daily.wave && this.score > b.daily.score)) {
+          b.daily = { date: this.dailyDate, wave: this.arcadeWave, score: this.score };
+          this.newBest = true;
+        }
+      }
+      storageSet(ARCADE_KEY, JSON.stringify(b));
+    } else if (this.difficulty === 'hardcore') {
+      this.clearSave();
+    }
   }
 
   continueGame() {
     if (!this.snapshot) return this.newGame();
+    this.mode = 'story';
     this.restore(this.snapshot);
     this.startLevel(this.snapshot.level);
   }
 
   private restore(s: Snapshot) {
+    this.difficulty = s.difficulty ?? 'normal';
     this.stats = JSON.parse(JSON.stringify(s.stats)) as Stats;
     this.perks = { ...s.perks };
     this.player = this.newPlayer();
@@ -551,6 +697,7 @@ export class Game {
       score: this.score,
       kills: this.kills,
       deaths: this.deaths,
+      difficulty: this.difficulty,
     };
     storageSet(SAVE_KEY, JSON.stringify(this.snapshot, (_k, v) => (v === Infinity ? 'Infinity' : v)));
   }
@@ -559,6 +706,14 @@ export class Game {
     this.levelIdx = idx;
     this.level = LEVELS[idx];
     this.takeSnapshot(idx);
+    this.prepareArena();
+    this.storyTip = Math.floor(Math.random() * T().manual.tips.length);
+    this.setState('story');
+    this.audio.playMusic(this.level.music);
+  }
+
+  /** Monta a arena da fase atual e zera tudo o que é da fase anterior. */
+  private prepareArena() {
     this.map = buildMap(this.level.theme);
     this.wet = new Uint8Array(this.map.w * this.map.h);
     this.enemies = [];
@@ -605,9 +760,6 @@ export class Game {
     this.usedWeapon = false;
     this.usedCommand = false;
     this.barrelBooms = [];
-    this.storyTip = Math.floor(Math.random() * T().manual.tips.length);
-    this.setState('story');
-    this.audio.playMusic(this.level.music);
   }
 
   beginPlay() {
@@ -619,12 +771,17 @@ export class Game {
   startWave() {
     const w = this.level.waves[this.waveIdx];
     const q: EnemyKind[] = [];
-    for (const [k, n] of w.spawns) for (let i = 0; i < n; i++) q.push(k);
+    const mul = this.diff().count;
+    for (const [k, n] of w.spawns) for (let i = 0; i < Math.round(n * mul); i++) q.push(k);
     this.queue = shuffle(q);
     this.phase = 'wave';
     this.spawnAcc = 0;
     this.tookDamage = false;
-    this.note = { text: `${this.waveIdx + 1}/${this.level.waves.length}: ${T().levels[this.levelIdx].notes[this.waveIdx]}`, t: 3.2 };
+    if (this.isArcade()) {
+      this.arcadeWave++;
+      if (this.arcadeWave >= 25) this.unlock('endless_25');
+      this.note = { text: T().arcade.waveNote(this.arcadeWave), t: 2.4 };
+    } else this.note = { text: `${this.waveIdx + 1}/${this.level.waves.length}: ${T().levels[this.levelIdx].notes[this.waveIdx]}`, t: 3.2 };
     this.audio.warn();
     this.queueIntro(w.spawns.map(([k]) => k));
   }
@@ -650,9 +807,10 @@ export class Game {
   /** HP ainda "guardado" nas divisões futuras da Hidra. */
   hydraReserve() {
     let total = 0;
+    const hp = ENEMIES.hydra.hp * this.bossHpMul();
     for (const b of this.bosses) {
-      if (b.tier === 3) total += 2 * ENEMIES.hydra.hp * 0.45 + 4 * ENEMIES.hydra.hp * 0.18;
-      else if (b.tier === 2) total += 2 * ENEMIES.hydra.hp * 0.18;
+      if (b.tier === 3) total += 2 * hp * 0.45 + 4 * hp * 0.18;
+      else if (b.tier === 2) total += 2 * hp * 0.18;
     }
     return total;
   }
@@ -660,7 +818,10 @@ export class Game {
   openPerks(after: 'wave' | 'boss' | 'level') {
     this.afterPerk = after;
     const avail = PERKS.filter((p) => !p.max || (this.perks[p.id] ?? 0) < p.max);
-    this.perkChoices = shuffle([...avail]).slice(0, 3);
+    const deal = () => shuffle([...avail]).slice(0, 3);
+    // na run diária, a mesma wave oferece os mesmos patches para todo mundo
+    this.perkChoices = this.mode === 'daily' ? withSeed(this.arcadeSeed + this.arcadeWave * 131 + Object.keys(this.perks).length, deal) : deal();
+    this.perkHover = 0;
     this.setState('perk');
     this.audio.ui();
   }
@@ -706,16 +867,21 @@ export class Game {
       if (this.waveIdx < this.level.waves.length) this.startWave();
       else this.startBoss();
     } else if (after === 'level') {
-      if (this.levelIdx + 1 < LEVELS.length) this.startLevel(this.levelIdx + 1);
+      if (this.isArcade()) this.startStage(this.arcadeStage + 1);
+      else if (this.levelIdx + 1 < LEVELS.length) this.startLevel(this.levelIdx + 1);
     }
   }
 
   nextFromClear() {
+    // o arcade não tem logs da história: vai direto para os patches
+    if (this.isArcade()) return this.openPerks('level');
     this.logT = 0;
     this.setState('log');
   }
 
   retry() {
+    if (this.isArcade()) return this.startArcade(this.mode === 'daily' ? 'daily' : 'endless');
+    if (this.difficulty === 'hardcore') return this.newGame('hardcore');
     this.deaths++;
     const d = this.deaths;
     if (this.snapshot) {
@@ -785,7 +951,7 @@ export class Game {
     }
     this.checkAchievements();
     const mult = this.multiplier();
-    this.score += e.def.score * mult;
+    this.score += Math.round(e.def.score * mult * this.diff().score);
     const p = this.player;
     p.ram = Math.min(p.maxRam, p.ram + e.def.ram * this.stats.ramGain);
     const next = STREAKS[this.nextStreak];
@@ -915,9 +1081,12 @@ export class Game {
   }
 
   private finishLevel() {
-    this.saveBest();
-    if (!this.progress.beaten.includes(this.level.boss)) this.progress.beaten.push(this.level.boss);
-    this.checkUnlocks();
+    const arcade = this.isArcade();
+    if (!arcade) {
+      this.saveBest();
+      if (!this.progress.beaten.includes(this.level.boss)) this.progress.beaten.push(this.level.boss);
+      this.checkUnlocks();
+    }
     if (!this.tookDamage) this.unlock('clean_boss');
     if (!this.usedWeapon) this.unlock('pistol_level');
     if (!this.usedCommand) this.unlock('no_commands');
@@ -929,7 +1098,8 @@ export class Game {
       giveWeapon(this, reward, false);
       this.rewardMsg = `npm install ${WEAPONS[reward].name}`;
     }
-    if (this.levelIdx === LEVELS.length - 1) {
+    if (!arcade && this.levelIdx === LEVELS.length - 1) {
+      if (this.difficulty === 'hard' || this.difficulty === 'hardcore') this.unlock('hard_clear');
       this.clearSave();
       // o final acontece em silêncio, e a próxima execução já fica contada
       this.endRun = this.run();

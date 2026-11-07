@@ -244,7 +244,7 @@ export function killEnemy(g: Game, e: Enemy, ang: number, force: number, heavy: 
         const t = e.tier - 1;
         for (let i = 0; i < 2; i++) {
           const c = spawnEnemy(g, 'hydra', e.x + (i ? 8 : -8), e.y);
-          setHydraTier(c, t);
+          setHydraTier(g, c, t);
           g.bosses.push(c);
           c.spawnT = 0;
           c.vx = (i ? 1 : -1) * 180;
@@ -284,10 +284,10 @@ export function killEnemy(g: Game, e: Enemy, ang: number, force: number, heavy: 
   }
 }
 
-export function setHydraTier(c: Enemy, t: number) {
+export function setHydraTier(g: Game, c: Enemy, t: number) {
   c.tier = t;
   const k = t === 3 ? 1 : t === 2 ? 0.45 : 0.18;
-  c.maxHp = c.hp = ENEMIES.hydra.hp * k;
+  c.maxHp = c.hp = ENEMIES.hydra.hp * k * g.bossHpMul();
   c.r = t === 3 ? 15 : t === 2 ? 10 : 6;
   c.hoff = c.r;
   c.speedMul = t === 3 ? 1 : t === 2 ? 1.35 : 1.8;
@@ -318,7 +318,7 @@ export function spawnPickupsForWaveClear(g: Game) {
   addPickup(g, 'hp', p.x + rand(-26, 26), p.y + rand(-22, 22));
   if (p.weapons.length > 1) addPickup(g, 'ammo', p.x + rand(-26, 26), p.y + rand(-22, 22));
   addPickup(g, 'ram', p.x + rand(-26, 26), p.y + rand(-22, 22));
-  if (g.levelIdx === 0 && g.waveIdx === 0) {
+  if (g.isArcade() ? g.arcadeWave === 1 : g.levelIdx === 0 && g.waveIdx === 0) {
     addPickup(g, 'weapon', p.x + 18, p.y, 'smg');
     g.hint('crate', T().hints.crate);
   }
@@ -380,6 +380,7 @@ export function hurtBarrel(g: Game, b: { x: number; y: number; hp: number; flash
 export function hurtPlayer(g: Game, dmg: number, srcX: number, srcY: number, by: KillerId) {
   const p = g.player;
   if (g.god || p.dead || p.invuln > 0 || p.dashT > 0 || p.sudoT > 0) return false;
+  dmg *= g.diff().dmg;
   g.lastKiller = by;
   g.tookDamage = true;
   p.hp -= dmg;
@@ -419,6 +420,7 @@ function killPlayer(g: Game) {
   g.saveBest();
   g.progress.deaths++;
   g.saveProgress();
+  g.onPlayerDeath();
   dismember(g, p.x, p.y, rand(6.3), 200, BLOOD.red, true);
   bloodFountain(g, p.x, p.y, 10, 140, BLOOD.red);
   g.glitch = 1;
@@ -593,7 +595,11 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
 
   rebuildHash(g);
 
-  // mira
+  // mira: com controle ou toque, a mira vira um ponto a uma distância fixa do jogador
+  if (i.aimDir !== null && !p.dead) {
+    i.mx = clamp(p.x - g.camX + Math.cos(i.aimDir) * 64, 0, W);
+    i.my = clamp(p.y - 7 - g.camY + Math.sin(i.aimDir) * 64, 0, H);
+  }
   const wx = g.camX + i.mx;
   const wy = g.camY + i.my;
   if (!p.dead) {
@@ -604,23 +610,14 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
   // movimento
   let mx = 0;
   let my = 0;
-  if (inputOn) {
-    if (i.held('KeyA', 'ArrowLeft')) mx--;
-    if (i.held('KeyD', 'ArrowRight')) mx++;
-    if (i.held('KeyW', 'ArrowUp')) my--;
-    if (i.held('KeyS', 'ArrowDown')) my++;
-  }
+  if (inputOn) [mx, my] = i.moveVec();
   const len = Math.hypot(mx, my);
-  if (len) {
-    mx /= len;
-    my /= len;
-  }
   p.moving = len > 0;
 
   p.dashCd = Math.max(0, p.dashCd - dt);
-  if (inputOn && p.dashCd <= 0 && i.hit('Space', 'ShiftLeft', 'ShiftRight')) {
-    const dx = len ? mx : Math.cos(p.aim);
-    const dy = len ? my : Math.sin(p.aim);
+  if (inputOn && p.dashCd <= 0 && i.actHit('dash')) {
+    const dx = len ? mx / len : Math.cos(p.aim);
+    const dy = len ? my / len : Math.sin(p.aim);
     p.dashT = 0.17;
     p.dashCd = 1.15 * s.dashCd;
     p.dashX = dx;
@@ -689,12 +686,12 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
       p.weapon = owned[(idx + i.wheel + owned.length) % owned.length];
       g.audio.ui();
     }
-    if (i.left && p.cd <= 0) fireWeapon(g);
-    if ((i.rightPressed || i.hit('KeyF')) && p.meleeCd <= 0) meleeSwing(g);
+    if (i.firing() && p.cd <= 0) fireWeapon(g);
+    if ((i.rightPressed || i.actHit('melee')) && p.meleeCd <= 0) meleeSwing(g);
   }
 
   // terminal
-  if (!p.dead && !g.term.open && !g.term.justClosed && i.hit('KeyQ', 'Enter')) g.term.show();
+  if (!p.dead && !g.term.open && !g.term.justClosed && i.actHit('terminal')) g.term.show();
 
   // orbitais (cron job)
   if (s.orbit > 0) {

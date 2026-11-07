@@ -94,7 +94,8 @@ export function drawEnemy(g: Game, ctx: CanvasRenderingContext2D, e: Enemy) {
     case 'segfault':
       drawSprite(ctx, SPR.segfault[fr], e.x, e.y, e.flip, flash);
       if (e.state === 1) {
-        ctx.strokeStyle = Math.sin(e.t * 40) > 0 ? '#ffec3d' : '#ff2a2a';
+        // alto contraste: branco e preto em vez de amarelo e vermelho
+        ctx.strokeStyle = Math.sin(e.t * 40) > 0 ? (g.highContrast ? '#ffffff' : '#ffec3d') : g.highContrast ? '#000000' : '#ff2a2a';
         ctx.beginPath();
         ctx.arc(Math.round(e.x), Math.round(e.y - 6), 18 + Math.sin(e.t * 30) * 3, 0, 7);
         ctx.stroke();
@@ -115,7 +116,8 @@ export function drawEnemy(g: Game, ctx: CanvasRenderingContext2D, e: Enemy) {
       drawSprite(ctx, SPR.scrum[e.state === 2 ? Math.floor(g.time * 18) % 2 : fr], e.x + shakeX, e.y, e.flip, flash, 3);
       if (e.state === 1) {
         // telegrafa a direção da corrida
-        ctx.strokeStyle = '#ff2a2a';
+        if (g.highContrast) hcLine(ctx, e.x, e.y - 10, e.x + Math.cos(e.a) * 400, e.y - 10 + Math.sin(e.a) * 400);
+        ctx.strokeStyle = g.highContrast ? '#ffffff' : '#ff2a2a';
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.moveTo(e.x, e.y - 10);
@@ -370,7 +372,8 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
         const on = Math.floor(g.time * 12) % 2 === 0;
         ctx.fillStyle = on ? 'rgba(255,42,42,.30)' : 'rgba(255,42,42,.12)';
         ctx.fillRect(h.x, h.y, h.w, h.h);
-        ctx.strokeStyle = '#ff2a2a';
+        if (g.highContrast) hatch(ctx, h.x, h.y, h.w, h.h, g.time);
+        ctx.strokeStyle = g.highContrast ? '#ffffff' : '#ff2a2a';
         ctx.strokeRect(h.x + 0.5, h.y + 0.5, h.w - 1, h.h - 1);
         if (on) drawText(ctx, 'DEPLOY', g.camX + W / 2, Math.max(h.y + 4, g.camY + 24), '#ff2a2a', { align: 'center' });
       } else {
@@ -381,8 +384,9 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
       }
     } else {
       if (h.warn > 0) {
-        ctx.strokeStyle = Math.floor(g.time * 14) % 2 ? '#000' : '#ff004c';
+        ctx.strokeStyle = Math.floor(g.time * 14) % 2 ? '#000' : g.highContrast ? '#ffffff' : '#ff004c';
         ctx.strokeRect(h.x + 0.5, h.y + 0.5, h.w - 1, h.h - 1);
+        if (g.highContrast) hatch(ctx, h.x, h.y, h.w, h.h, g.time);
       } else {
         const fade = h.life < 1 ? h.life : 1;
         ctx.globalAlpha = fade;
@@ -400,8 +404,9 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
   // Alerta dos feixes
   for (const b of g.beams) {
     if (b.warn > 0) {
-      ctx.strokeStyle = b.color;
-      ctx.globalAlpha = 0.45 + Math.sin(g.time * 30) * 0.3;
+      if (g.highContrast) hcLine(ctx, b.x, b.y, b.x + Math.cos(b.a) * b.len, b.y + Math.sin(b.a) * b.len);
+      ctx.strokeStyle = g.highContrast ? '#ffffff' : b.color;
+      ctx.globalAlpha = g.highContrast ? 1 : 0.45 + Math.sin(g.time * 30) * 0.3;
       ctx.setLineDash([5, 4]);
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
@@ -605,6 +610,13 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
   for (const b of g.ebullets) {
     const pulse = Math.sin(g.time * 18 + b.x) > 0;
     const R = b.r;
+    if (g.highContrast) {
+      // contorno preto e anel branco fixos: o tiro se destaca em qualquer fundo, sem depender da cor
+      ctx.fillStyle = '#000';
+      ctx.fillRect(Math.round(b.x - R - 2), Math.round(b.y - R - 2), R * 2 + 4, R * 2 + 4);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(Math.round(b.x - R - 1), Math.round(b.y - R - 1), R * 2 + 2, R * 2 + 2);
+    }
     ctx.fillStyle = pulse ? '#ffffff' : b.color;
     ctx.fillRect(Math.round(b.x - R), Math.round(b.y - R), R * 2, R * 2);
     ctx.fillStyle = b.color;
@@ -667,3 +679,39 @@ function renderLights(g: Game, ctx: CanvasRenderingContext2D, ox: number, oy: nu
   ctx.restore();
 }
 
+
+/** Linha preta larga por baixo de um aviso, para ele aparecer sobre qualquer chão. */
+function hcLine(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number) {
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+/** Listras diagonais pretas e brancas: área perigosa reconhecível sem depender de vermelho. */
+function hatch(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, time: number) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  const shift = Math.floor(time * 20) % 12;
+  ctx.lineWidth = 3;
+  for (let d = -h - 12 + shift; d < w + 12; d += 12) {
+    ctx.strokeStyle = '#000';
+    ctx.beginPath();
+    ctx.moveTo(x + d, y + h);
+    ctx.lineTo(x + d + h, y);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + d + 3, y + h);
+    ctx.lineTo(x + d + 3 + h, y);
+    ctx.stroke();
+    ctx.lineWidth = 3;
+  }
+  ctx.restore();
+}

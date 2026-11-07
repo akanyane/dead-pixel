@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
     <meta name="theme-color" content="#050507" />
     <meta name="description" content="DEAD PIXEL: a top-down 2D tech-horror mystery shooter for the browser. Friday, 17:58: a pixel went dark, and nobody answered after that." />
     <title>DEAD PIXEL</title>
@@ -39,6 +39,9 @@
         aspect-ratio: 16 / 9;
         width: min(100vw, calc(100vh * 16 / 9));
         cursor: none;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
         image-rendering: pixelated;
         outline: none;
       }

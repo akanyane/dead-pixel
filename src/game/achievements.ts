@@ -36,6 +36,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'all_skins', stat: (g) => [SKINS.filter((s) => g.isSkinUnlocked(s)).length, SKINS.length] },
   { id: 'deaths_10', stat: (g) => [g.progress.deaths, 10] },
   { id: 'lore_5', stat: (g) => [g.progress.lore.length, 5] },
+  { id: 'endless_25' },
+  { id: 'hard_clear' },
   { id: 'cat_noa', hidden: true },
   { id: 'ending', hidden: true, stat: beat('pixel') },
   { id: 'second_run', hidden: true, stat: (g) => [g.progress.runs, 2] },

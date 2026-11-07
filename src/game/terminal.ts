@@ -1,4 +1,4 @@
-import { rand } from '../core/util';
+import { H, W, rand } from '../core/util';
 import { killNearest, pingAll, rmRf } from './combat';
 import { glitchPixels, ring } from './fx';
 import type { Game } from './game';
@@ -55,8 +55,14 @@ export const COMMANDS: Command[] = [
   },
 ];
 
+/** Posição do terminal e da lista de comandos na tela, usada pelo desenho e pelos cliques. */
+export const TERM_BOX = { x: 8, w: W - 16, h: 102, y: H - 15 - 102, listX: 8 + 354 + 6, row: 10 };
+export const commandRowY = (i: number) => TERM_BOX.y + 12 + i * TERM_BOX.row;
+
 export class Terminal {
   open = false;
+  /** Comando destacado quando o terminal é usado com controle. */
+  sel = 0;
   line = '';
   lines: { text: string; color: string }[] = [];
   history: string[] = [];
@@ -148,6 +154,28 @@ export class Terminal {
     if (!this.open) return;
     const g = this.g;
     this.cursorT += dt;
+    const input = g.input;
+    // controle: sem teclado, escolhe-se o comando na lista
+    if (input.usingPad) {
+      if (input.hit('ArrowDown')) this.sel = (this.sel + 1) % COMMANDS.length;
+      if (input.hit('ArrowUp')) this.sel = (this.sel - 1 + COMMANDS.length) % COMMANDS.length;
+      if (input.hit('Enter')) this.exec(COMMANDS[this.sel].name);
+      else if (input.hit('Escape')) this.hide();
+      if (input.hit('ArrowDown', 'ArrowUp')) g.audio.key();
+      return;
+    }
+    // mouse e toque: clicar num comando executa, clicar fora fecha
+    if (input.leftPressed) {
+      const row = COMMANDS.findIndex((_, i) => input.my >= commandRowY(i) - 1 && input.my < commandRowY(i) + TERM_BOX.row - 1);
+      if (input.mx >= TERM_BOX.listX - 3 && row >= 0) {
+        this.exec(COMMANDS[row].name);
+        return;
+      }
+      if (input.my < TERM_BOX.y) {
+        this.hide();
+        return;
+      }
+    }
     for (const k of g.input.typed) {
       if (k === 'Escape') {
         this.hide();

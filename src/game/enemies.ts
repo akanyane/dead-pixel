@@ -7,8 +7,8 @@ import type { Enemy, Game } from './game';
 
 export function spawnEnemy(g: Game, kind: EnemyKind, x: number, y: number): Enemy {
   const d = ENEMIES[kind];
-  // escala leve de HP por fase: as armas também evoluem
-  const scale = d.hp > 1000 ? 1 : 1 + g.levelIdx * 0.16;
+  // escala leve de HP por fase: as armas também evoluem. Chefes têm a própria escala.
+  const scale = d.hp > 1000 ? g.bossHpMul() : g.enemyHpScale();
   const e: Enemy = {
     kind, def: d, x, y, vx: 0, vy: 0, hp: d.hp * scale, maxHp: d.hp * scale, r: d.r, hoff: d.hoff, flash: 0, t: rand(5), flip: false,
     state: 0, stateT: rand(0.5, 2), a: rand(6.28), b: 0, wounded: false, burn: 0, stun: 0, skin: Math.floor(rand(4)), speedMul: rand(0.85, 1.2),
@@ -44,7 +44,7 @@ export function spawnBoss(g: Game, kind: EnemyKind) {
   e.stun = 0;
   e.speedMul = 1;
   e.skin = 0;
-  if (kind === 'hydra') setHydraTier(e, 3);
+  if (kind === 'hydra') setHydraTier(g, e, 3);
   if (kind === 'monolith') {
     e.state = 0;
     e.stateT = 6;
@@ -412,7 +412,7 @@ export function updateEnemies(g: Game, dt: number) {
         continue;
       }
     }
-    const speed = e.def.speed * e.speedMul * (e.wounded ? 0.8 : 1) * (1 + g.levelIdx * 0.04);
+    const speed = e.def.speed * e.speedMul * (e.wounded ? 0.8 : 1) * g.enemySpeedScale();
 
     switch (e.kind) {
       case 'walker':

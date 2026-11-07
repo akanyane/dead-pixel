@@ -19,6 +19,40 @@ export function shuffle<T>(arr: T[]): T[] {
   return arr;
 }
 
+/** Gerador pseudoaleatório pequeno e determinístico (mulberry32). */
+export function seeded(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Roda `fn` com Math.random trocado por um gerador com seed. É assim que a run diária
+ * gera o mesmo mapa, as mesmas waves e os mesmos patches para todo mundo, sem precisar
+ * passar um gerador por todo o código de geração.
+ */
+export function withSeed<T>(seed: number, fn: () => T): T {
+  const original = Math.random;
+  Math.random = seeded(seed);
+  try {
+    return fn();
+  } finally {
+    Math.random = original;
+  }
+}
+
+/** Transforma um texto (como a data do dia) em uma seed de 32 bits. */
+export function hashSeed(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
 /** Distância de um ponto até um segmento. Usada em beams e railgun. */
 export function distToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
   const dx = bx - ax;

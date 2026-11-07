@@ -214,7 +214,7 @@ export function updateManual(g: Game, input: Input, ctx: CanvasRenderingContext2
   }
   if (input.wheel) g.manualIdx = (g.manualIdx + input.wheel + count()) % count();
 
-  const moved = input.mx !== lastMx || input.my !== lastMy;
+  const moved = !input.usingPad && (input.mx !== lastMx || input.my !== lastMy);
   lastMx = input.mx;
   lastMy = input.my;
   if (input.leftPressed && input.my >= TAB_Y - 2 && input.my < TAB_Y + 12) {
@@ -331,7 +331,7 @@ export function updateSkins(g: Game, input: Input) {
   if (input.hit('ArrowLeft', 'KeyA')) move(-1);
   if (input.hit('ArrowDown', 'KeyS')) move(COLS);
   if (input.hit('ArrowUp', 'KeyW')) move(-COLS);
-  const moved = input.mx !== lastMx || input.my !== lastMy;
+  const moved = !input.usingPad && (input.mx !== lastMx || input.my !== lastMy);
   lastMx = input.mx;
   lastMy = input.my;
   let hover = -1;
@@ -419,7 +419,7 @@ export function updateAchievements(g: Game, input: Input) {
   if (input.hit('ArrowDown', 'KeyS')) move(1);
   if (input.hit('ArrowUp', 'KeyW')) move(-1);
   if (input.wheel) g.achievementIdx = Math.max(0, Math.min(n - 1, g.achievementIdx + input.wheel));
-  const moved = input.mx !== lastMx || input.my !== lastMy;
+  const moved = !input.usingPad && (input.mx !== lastMx || input.my !== lastMy);
   lastMx = input.mx;
   lastMy = input.my;
   const row = Math.floor((input.my - ACH_Y + 2) / ACH_ROW);

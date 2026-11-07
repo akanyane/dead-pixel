@@ -161,6 +161,33 @@ export const LEVELS: LevelDef[] = [
   },
 ];
 
+export type Difficulty = 'easy' | 'normal' | 'hard' | 'hardcore';
+export const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard', 'hardcore'];
+
+/** Multiplicadores por dificuldade: HP dos inimigos, dano que eles causam, tamanho das waves e pontuação. */
+export const DIFFICULTY: Record<Difficulty, { hp: number; dmg: number; count: number; score: number }> = {
+  easy: { hp: 0.75, dmg: 0.6, count: 0.8, score: 0.5 },
+  normal: { hp: 1, dmg: 1, count: 1, score: 1 },
+  hard: { hp: 1.25, dmg: 1.35, count: 1.2, score: 1.5 },
+  hardcore: { hp: 1.25, dmg: 1.35, count: 1.2, score: 2 },
+};
+
+/** Modo arcade (infinito e diário): 4 waves e um chefe por arena, com os chefes em ciclo. */
+export const ARCADE_WAVES = 4;
+export const ARCADE_BOSSES: EnemyKind[] = ['scrum', 'kernel', 'hydra', 'monolith', 'pixel'];
+
+/** Inimigos que podem aparecer no arcade, a partir de qual arena e com qual peso no sorteio. */
+export const ARCADE_POOL: { kind: EnemyKind; from: number; weight: number }[] = [
+  { kind: 'walker', from: 0, weight: 10 },
+  { kind: 'bug', from: 0, weight: 6 },
+  { kind: 'recruiter', from: 0, weight: 2 },
+  { kind: 'runner', from: 1, weight: 5 },
+  { kind: 'leak', from: 1, weight: 2 },
+  { kind: 'segfault', from: 2, weight: 3 },
+  { kind: 'nullp', from: 2, weight: 2 },
+  { kind: 'stack', from: 2, weight: 0.6 },
+];
+
 /** Limites de sequência. Os nomes dos anúncios ficam em i18n.ts, na mesma ordem. */
 export const STREAKS = [5, 10, 20, 35, 50, 75, 100, 150, 250];
 
