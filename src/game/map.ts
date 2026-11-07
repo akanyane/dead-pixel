@@ -1,4 +1,5 @@
 import { drawText } from '../core/font';
+import { T } from './i18n';
 import { TILE, chance, makeCanvas, pick, rand, randInt } from '../core/util';
 
 export const FLOOR = 0;
@@ -364,8 +365,8 @@ function paintOffice(m: GameMap) {
     }
   }
   for (let y = 5; y < m.h; y += 9) for (let x = 6; x < m.w; x += 11) m.lights.push({ x: x * TILE, y: y * TILE, r: 92, color: '#8f96aa', flicker: chance(0.25) ? 0.5 : 0 });
-  drawText(c, 'SEXTA, 17:58', m.pxW / 2, m.pxH / 2 - 26, '#4c5573', { align: 'center', scale: 2 });
-  drawText(c, 'NUNCA FAÇA DEPLOY NA SEXTA', m.pxW / 2, m.pxH / 2 - 6, '#4c5573', { align: 'center' });
+  drawText(c, T().floor.officeBig, m.pxW / 2, m.pxH / 2 - 26, '#4c5573', { align: 'center', scale: 2 });
+  drawText(c, T().floor.officeSmall, m.pxW / 2, m.pxH / 2 - 6, '#4c5573', { align: 'center' });
 }
 
 function paintDatacenter(m: GameMap) {
@@ -397,8 +398,8 @@ function paintDatacenter(m: GameMap) {
     }
   }
   for (let y = 6; y < m.h; y += 12) for (let x = 2; x < m.w; x += 5) m.lights.push({ x: x * TILE + 8, y: y * TILE, r: 54, color: '#3f73b8' });
-  drawText(c, 'SALA FRIA', m.pxW / 2, m.pxH / 2 - 22, '#33435f', { align: 'center', scale: 2 });
-  drawText(c, 'RACK 42: NÃO TOCAR', m.pxW / 2, m.pxH / 2 - 2, '#33435f', { align: 'center' });
+  drawText(c, T().floor.coldBig, m.pxW / 2, m.pxH / 2 - 22, '#33435f', { align: 'center', scale: 2 });
+  drawText(c, T().floor.coldSmall, m.pxW / 2, m.pxH / 2 - 2, '#33435f', { align: 'center' });
 }
 
 function paintUndernet(m: GameMap) {
@@ -518,7 +519,7 @@ function paintProduction(m: GameMap) {
   for (let y = 4; y < m.h; y += 8) {
     for (let x = 4; x < m.w; x += 10) m.lights.push({ x: x * TILE, y: y * TILE, r: 96, color: '#a02a1c', flicker: 0.4 });
   }
-  drawText(c, 'PRODUÇÃO', m.pxW / 2, m.pxH / 2 - 10, '#4a2b30', { align: 'center', scale: 3 });
+  drawText(c, T().floor.prod, m.pxW / 2, m.pxH / 2 - 10, '#4a2b30', { align: 'center', scale: 3 });
 }
 
 function paintVoid(m: GameMap) {

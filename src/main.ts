@@ -1,12 +1,13 @@
 import { Presenter } from './core/crt';
 import { drawText } from './core/font';
 import { Input } from './core/input';
-import { H, W, clamp, makeCanvas, rand } from './core/util';
-import { LEVELS } from './game/data';
+import { H, W, makeCanvas, rand } from './core/util';
 import { Game } from './game/game';
-import { renderClear, renderDead, renderHud, renderPause, renderPerks, renderStory, renderVictory } from './game/hud';
+import { advanceEnding, logDone, renderClear, renderDead, renderHud, renderLog, renderPause, renderPerks, renderStory, renderToast, renderVictory, storyDuration } from './game/hud';
+import { LANGS, T, getLang, setLang } from './game/i18n';
 import { renderWorld } from './game/render';
-import { SPR, buildSprites, drawSprite } from './game/sprites';
+import { openSkins, renderIntro, renderManual, renderSkins, updateIntro, updateManual, updateSkins } from './game/screens';
+import { SPR, buildSprites, drawSprite, skinSprites } from './game/sprites';
 
 const screen = document.getElementById('screen') as HTMLCanvasElement;
 const [buffer, ctx] = makeCanvas(W, H);
@@ -32,20 +33,9 @@ const parade = Array.from({ length: 9 }, (_, i) => ({ x: rand(-40, W + 40), s: i
 
 type MenuItem = { label: string; act: () => void };
 
-function menuItems(): MenuItem[] {
-  const items: MenuItem[] = [];
-  if (game.snapshot) {
-    items.push({ label: `CONTINUAR  (fase ${game.snapshot.level + 1}: ${LEVELS[game.snapshot.level].title})`, act: () => game.continueGame() });
-  }
-  items.push({ label: 'NOVO JOGO', act: () => game.newGame() });
-  items.push({ label: `GORE: ${goreName()}`, act: cycleGore });
-  items.push({ label: `MÚSICA: ${game.musicOn ? 'LIGADA' : 'DESLIGADA'}`, act: toggleMusic });
-  items.push({ label: `EFEITO CRT: ${game.crtOn ? 'LIGADO' : 'DESLIGADO'}`, act: toggleCrt });
-  return items;
-}
-
 function goreName() {
-  return game.goreLevel >= 1.2 ? 'MÁXIMO' : game.goreLevel >= 0.8 ? 'NORMAL' : 'CONTIDO';
+  const l = T().options.goreLevels;
+  return game.goreLevel >= 1.2 ? l.max : game.goreLevel >= 0.8 ? l.normal : l.low;
 }
 
 function cycleGore() {
@@ -53,42 +43,119 @@ function cycleGore() {
   game.saveOptions();
 }
 
-function toggleMusic() {
-  game.musicOn = !game.musicOn;
+function cycleLang() {
+  setLang(LANGS[(LANGS.indexOf(getLang()) + 1) % LANGS.length]);
   game.saveOptions();
 }
 
-function toggleCrt() {
-  game.crtOn = !game.crtOn;
-  presenter.crtEnabled = game.crtOn;
-  game.saveOptions();
+const onOff = (v: boolean) => (v ? T().options.on : T().options.off);
+
+function openManual(from: 'menu' | 'pause') {
+  game.returnTo = from;
+  game.setState('manual');
 }
 
-const MENU_Y = 128;
+function openOptions(from: 'menu' | 'pause') {
+  game.returnTo = from;
+  game.optionsIdx = 0;
+  game.setState('options');
+}
 
-function updateMenu() {
-  const items = menuItems();
+// O rótulo de idioma é bilíngue de propósito: precisa ser achado por quem não lê o idioma atual.
+const langLabel = () => `IDIOMA / LANGUAGE: ${T().langName}`;
+
+function menuItems(): MenuItem[] {
+  const t = T();
+  const items: MenuItem[] = [];
+  if (game.snapshot) {
+    const lv = game.snapshot.level;
+    items.push({ label: t.menu.continue(lv + 1, t.levels[lv].title), act: () => game.continueGame() });
+  }
+  items.push({ label: t.menu.newGame, act: () => game.newGame() });
+  items.push({ label: t.menu.skins, act: () => openSkins(game) });
+  items.push({ label: t.menu.manual, act: () => openManual('menu') });
+  items.push({ label: t.menu.options, act: () => openOptions('menu') });
+  items.push({ label: langLabel(), act: cycleLang });
+  return items;
+}
+
+function optionItems(): MenuItem[] {
+  const o = T().options;
+  return [
+    { label: `${o.gore}: ${goreName()}`, act: cycleGore },
+    { label: `${o.music}: ${onOff(game.musicOn)}`, act: () => { game.musicOn = !game.musicOn; game.saveOptions(); } },
+    { label: `${o.crt}: ${onOff(game.crtOn)}`, act: () => { game.crtOn = !game.crtOn; presenter.crtEnabled = game.crtOn; game.saveOptions(); } },
+    { label: `${o.tips}: ${onOff(game.tipsOn)}`, act: () => { game.tipsOn = !game.tipsOn; game.saveOptions(); } },
+    { label: langLabel(), act: cycleLang },
+    { label: o.back, act: () => game.setState(game.returnTo) },
+  ];
+}
+
+function pauseItems(): MenuItem[] {
+  const t = T();
+  return [
+    { label: t.pause.resume, act: () => { game.setState('play'); game.audio.setMuffled(false); } },
+    { label: t.menu.manual.split(':')[0], act: () => openManual('pause') },
+    { label: t.menu.options, act: () => openOptions('pause') },
+    { label: t.pause.quit, act: () => game.quitToMenu() },
+  ];
+}
+
+let lastMx = -1;
+let lastMy = -1;
+
+/** Navegação comum dos menus: teclado, hover e clique. Retorna o índice selecionado. */
+function runList(items: MenuItem[], idx: number, y: number, rowH: number, halfW: number): number {
+  const n = items.length;
+  let i = Math.min(idx, n - 1);
   if (input.hit('ArrowDown', 'KeyS')) {
-    game.menuIdx = (game.menuIdx + 1) % items.length;
+    i = (i + 1) % n;
     game.audio.ui();
   }
   if (input.hit('ArrowUp', 'KeyW')) {
-    game.menuIdx = (game.menuIdx - 1 + items.length) % items.length;
+    i = (i - 1 + n) % n;
     game.audio.ui();
   }
-  const hoverIdx = Math.floor((input.my - MENU_Y + 2) / 14);
-  const inside = hoverIdx >= 0 && hoverIdx < items.length && Math.abs(input.mx - W / 2) < 150;
-  if (inside && (input.mx !== lastMx || input.my !== lastMy)) game.menuIdx = hoverIdx;
+  const row = Math.floor((input.my - y + 2) / rowH);
+  const inside = row >= 0 && row < n && Math.abs(input.mx - W / 2) < halfW;
+  if (inside && (input.mx !== lastMx || input.my !== lastMy)) i = row;
   lastMx = input.mx;
   lastMy = input.my;
   if (input.hit('Enter', 'Space') || (input.leftPressed && inside)) {
     game.audio.ui();
-    items[game.menuIdx].act();
-    game.menuIdx = clamp(game.menuIdx, 0, menuItems().length - 1);
+    items[inside && input.leftPressed ? row : i].act();
   }
+  return i;
 }
-let lastMx = -1;
-let lastMy = -1;
+
+function drawList(items: MenuItem[], idx: number, y: number, rowH: number, halfW: number) {
+  items.forEach((it, i) => {
+    const on = idx === i;
+    if (on) {
+      ctx.fillStyle = '#39ff88';
+      ctx.fillRect(W / 2 - halfW, y + i * rowH - 2, halfW * 2, rowH - 2);
+    }
+    drawText(ctx, it.label, W / 2, y + i * rowH, on ? '#02150a' : '#dfe6ee', { align: 'center' });
+  });
+}
+
+const MENU_Y = 122;
+const MENU_ROW = 14;
+const OPT_Y = 72;
+
+function renderOptions() {
+  if (game.returnTo === 'menu') {
+    ctx.fillStyle = '#05080c';
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = 'rgba(2,6,10,.9)';
+    ctx.fillRect(0, 0, W, H);
+  }
+  drawText(ctx, T().options.title, W / 2, 34, '#f0efe8', { align: 'center', scale: 3 });
+  drawList(optionItems(), game.optionsIdx, OPT_Y, 16, 130);
+}
+
+let runnerX = 60;
 
 function renderMenu(dt: number) {
   ctx.fillStyle = '#050507';
@@ -107,6 +174,10 @@ function renderMenu(dt: number) {
     drawSprite(ctx, SPR.zombies[z.s].walk[fr], z.x, H - 8);
     ctx.globalAlpha = 1;
   }
+  // você, com a skin escolhida, fugindo na frente da horda
+  runnerX += 30 * dt;
+  if (runnerX > W + 30) runnerX = -30;
+  drawSprite(ctx, skinSprites(game.progress.skin, game.time)[1 + (Math.floor(game.time * 8) % 2)], runnerX, H - 8);
   ctx.fillStyle = '#2a0408';
   ctx.fillRect(0, H - 8, W, 8);
 
@@ -132,44 +203,35 @@ function renderMenu(dt: number) {
   ctx.fillStyle = '#000';
   ctx.fillRect(W / 2 - 1, ty + 12, 3, 3);
 
-  drawText(ctx, 'um pixel morreu em produção. todo mundo que olhou virou zumbi.', W / 2, 92, '#8fa3bf', { align: 'center' });
-  drawText(ctx, `recorde ${game.best}`, W / 2, 106, '#ffd23d', { align: 'center' });
-
-  menuItems().forEach((it, i) => {
-    const on = game.menuIdx === i;
-    if (on) {
-      ctx.fillStyle = '#39ff88';
-      ctx.fillRect(W / 2 - 150, MENU_Y + i * 14 - 2, 300, 12);
-    }
-    drawText(ctx, it.label, W / 2, MENU_Y + i * 14, on ? '#02150a' : '#dfe6ee', { align: 'center' });
-  });
-
-  drawText(ctx, 'WASD move  |  mouse mira e atira  |  ESPAÇO dash  |  F teclada  |  Q terminal', W / 2, H - 22, '#6d8a78', { align: 'center' });
+  drawText(ctx, T().menu.tagline, W / 2, 90, '#8fa3bf', { align: 'center' });
+  drawText(ctx, T().menu.best(game.best), W / 2, 103, '#ffd23d', { align: 'center' });
+  drawList(menuItems(), game.menuIdx, MENU_Y, MENU_ROW, 150);
+  drawText(ctx, T().menu.controls, W / 2, H - 22, '#6d8a78', { align: 'center' });
 }
 
 // ---------- Boot ----------
 
-const BOOT = [
-  '[    0.000000] Linux version 6.6.6-dead (root@pixel) #1 SMP FRI 17:58',
-  '[    0.004231] Memory: 512MB available (666MB reserved by zumbi)',
-  '[    0.113370] pixel: detected 1 dead pixel at (240, 135)',
-  '[    0.218801] pixel: spreading. this is fine.',
-  '[    0.420000] systemd[1]: Started Procrastination Daemon.',
-  '[    0.666666] zumbi[3000]: <defunct>',
-  '[    0.666667] zumbi[3001]: <defunct>',
-  '[    0.666668] zumbi[3002]: <defunct>',
-  '[    0.667000] WARNING: blood detected on bus 0',
+const bootLog = () => [
+  '[    0.000000] vesper-os 4.1.2 (root@lazaro) #1 SMP FRI 17:58',
+  '[    0.004231] Memory: 512MB available, 99.9% reserved',
+  `[    0.113370] lazaro: restore point loaded. run ${String(game.run()).padStart(4, '0')}`,
+  '[    0.218801] display: 1 dead pixel at (240, 135)',
+  '[    0.420000] display: do not look.',
+  '[    0.666666] proc[3000]: <defunct>',
+  '[    0.666667] proc[3001]: <defunct>',
+  '[    0.666668] proc[3002]: <defunct>',
+  '[    0.667000] WARNING: 412 processes not responding',
 ];
 
 function renderBoot() {
   ctx.fillStyle = '#020304';
   ctx.fillRect(0, 0, W, H);
   const n = Math.floor(game.stateT * 7);
-  BOOT.slice(0, n).forEach((l, i) => drawText(ctx, l, 10, 12 + i * 10, i >= 5 ? '#ff5a5a' : '#8fa3bf'));
-  if (n > BOOT.length) {
-    if (Math.floor(game.time * 2) % 2) drawText(ctx, 'clique ou aperte qualquer tecla para logar como root', W / 2, 190, '#39ff88', { align: 'center' });
-    drawText(ctx, 'contém violência pixelada, sangue digital e piadas de TI', W / 2, 232, '#3b5245', { align: 'center' });
-    if (matchMedia('(pointer: coarse)').matches) drawText(ctx, 'este jogo precisa de teclado e mouse', W / 2, 212, '#ffd23d', { align: 'center' });
+  bootLog().slice(0, n).forEach((l, i) => drawText(ctx, l, 10, 12 + i * 10, i >= 5 ? '#ff5a5a' : '#8fa3bf'));
+  if (n > 9) {
+    if (Math.floor(game.time * 2) % 2) drawText(ctx, T().boot.press, W / 2, 190, '#39ff88', { align: 'center' });
+    drawText(ctx, T().boot.warning, W / 2, 232, '#3b5245', { align: 'center' });
+    if (matchMedia('(pointer: coarse)').matches) drawText(ctx, T().boot.needsKeyboard, W / 2, 212, '#ffd23d', { align: 'center' });
   }
   ctx.fillStyle = '#000';
   ctx.fillRect(W / 2, H / 2, 1, 1);
@@ -197,16 +259,6 @@ function crosshair() {
 
 // ---------- Máquina de estados ----------
 
-function pauseItems() {
-  return [
-    { label: 'CONTINUAR', act: () => { game.setState('play'); game.audio.setMuffled(false); } },
-    { label: `GORE: ${goreName()}`, act: cycleGore },
-    { label: `MÚSICA: ${game.musicOn ? 'LIGADA' : 'DESLIGADA'}`, act: toggleMusic },
-    { label: `EFEITO CRT: ${game.crtOn ? 'LIGADO' : 'DESLIGADO'}`, act: toggleCrt },
-    { label: 'SAIR PARA O MENU', act: () => game.quitToMenu() },
-  ];
-}
-
 function handleInput(dt: number) {
   switch (game.state) {
     case 'boot':
@@ -215,16 +267,33 @@ function handleInput(dt: number) {
       }
       break;
     case 'menu':
-      updateMenu();
+      game.menuIdx = runList(menuItems(), game.menuIdx, MENU_Y, MENU_ROW, 150);
+      break;
+    case 'options':
+      game.optionsIdx = runList(optionItems(), game.optionsIdx, OPT_Y, 16, 130);
+      if (input.hit('Escape')) game.setState(game.returnTo);
+      break;
+    case 'manual':
+      updateManual(game, input, ctx);
+      break;
+    case 'skins':
+      updateSkins(game, input);
+      break;
+    case 'intro':
+      updateIntro(game, input);
+      break;
+    case 'log':
+      game.logT += dt;
+      if (game.stateT > 0.3 && (input.hit('Enter', 'Space') || input.leftPressed)) {
+        if (logDone(game)) game.openPerks('level');
+        else game.logT = 999;
+      }
       break;
     case 'story': {
       game.storyT += dt;
-      const total = game.level.story.reduce((n, l) => n + l.length + 6, 0) / 42;
-      if (game.stateT > 0.2 && input.hit('Enter', 'Space')) {
-        if (game.storyT < total) game.storyT = total + 1;
-        else game.beginPlay();
-      } else if (game.stateT > 0.2 && input.leftPressed) {
-        if (game.storyT < total) game.storyT = total + 1;
+      const skip = input.hit('Enter', 'Space') || input.leftPressed;
+      if (game.stateT > 0.2 && skip) {
+        if (game.storyT < storyDuration(game)) game.storyT = storyDuration(game) + 1;
         else game.beginPlay();
       }
       break;
@@ -256,25 +325,13 @@ function handleInput(dt: number) {
         game.audio.setMuffled(true);
       }
       break;
-    case 'pause': {
-      const items = pauseItems();
-      if (input.hit('ArrowDown', 'KeyS')) game.pauseIdx = (game.pauseIdx + 1) % items.length;
-      if (input.hit('ArrowUp', 'KeyW')) game.pauseIdx = (game.pauseIdx - 1 + items.length) % items.length;
-      const hover = Math.floor((input.my - 94) / 16);
-      if (hover >= 0 && hover < items.length && Math.abs(input.mx - W / 2) < 92 && (input.mx !== lastMx || input.my !== lastMy)) game.pauseIdx = hover;
-      lastMx = input.mx;
-      lastMy = input.my;
-      const clicked = input.leftPressed && hover >= 0 && hover < items.length && Math.abs(input.mx - W / 2) < 92;
-      if (input.hit('Enter', 'Space') || clicked) {
-        items[game.pauseIdx].act();
-        game.audio.ui();
-      }
-      if (input.hit('Escape', 'KeyP') && game.stateT > 0.05) {
+    case 'pause':
+      game.pauseIdx = runList(pauseItems(), game.pauseIdx, 96, 16, 92);
+      if (input.hit('Escape', 'KeyP') && game.stateT > 0.05 && game.state === 'pause') {
         game.setState('play');
         game.audio.setMuffled(false);
       }
       break;
-    }
     case 'dead':
       if (input.hit('KeyR') || (game.stateT > 0.5 && input.hit('Enter'))) game.retry();
       if (input.hit('KeyM')) game.quitToMenu();
@@ -283,7 +340,8 @@ function handleInput(dt: number) {
       if (game.stateT > 0.4 && (input.hit('Enter', 'Space') || input.leftPressed)) game.nextFromClear();
       break;
     case 'victory':
-      if (game.stateT > 1.8 && (input.hit('Enter') || input.leftPressed)) game.quitToMenu();
+      if (game.stateT > 1.5) game.endT += dt;
+      if (game.stateT > 1.8 && (input.hit('Enter', 'Space') || input.leftPressed) && advanceEnding(game)) game.quitToMenu();
       break;
   }
 }
@@ -299,15 +357,29 @@ function render(dt: number) {
     case 'story':
       renderStory(game, ctx);
       break;
+    case 'skins':
+      renderSkins(game, ctx);
+      break;
+    case 'log':
+      renderLog(game, ctx);
+      break;
+    case 'manual':
+      renderManual(game, ctx);
+      break;
+    case 'options':
+      renderOptions();
+      break;
     default:
       renderWorld(game, ctx);
       renderHud(game, ctx);
       if (game.state === 'perk') renderPerks(game, ctx);
+      else if (game.state === 'intro') renderIntro(game, ctx);
       else if (game.state === 'pause') renderPause(game, ctx, pauseItems().map((i) => i.label));
       else if (game.state === 'dead') renderDead(game, ctx);
       else if (game.state === 'clear') renderClear(game, ctx);
       else if (game.state === 'victory') renderVictory(game, ctx);
   }
+  renderToast(game, ctx);
   crosshair();
 }
 

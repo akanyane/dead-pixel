@@ -1,6 +1,7 @@
 import { TILE, angleTo, chance, clamp, dist, pick, rand } from '../core/util';
 import { explosion, forNear, hurtEnemy, hurtPlayer, killEnemy, setHydraTier } from './combat';
 import { ENEMIES, type EnemyKind } from './data';
+import { T } from './i18n';
 import { BLOOD, P, bloodFountain, bloodSpray, glitchPixels, ring, spawnPart, splat } from './fx';
 import type { Enemy, Game } from './game';
 
@@ -56,9 +57,14 @@ export function spawnBoss(g: Game, kind: EnemyKind) {
   g.bosses.push(e);
 }
 
+// Inimigo sendo atualizado: quem disparou fica registrado na bala, para a tela de morte.
+let shooter: EnemyKind = 'walker';
+
 function shoot(g: Game, x: number, y: number, a: number, sp: number, dmg: number, color: string, text: string | null = null, r = 3, life = 5, turn = 0) {
   if (g.ebullets.length > 420) return;
-  g.ebullets.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r, life, dmg, color, text, turn });
+  // com o tempo, os disparos começam a dizer o que realmente são: mensagens
+  if (text && chance([0, 0, 0.15, 0.4, 0.8][g.levelIdx] ?? 0)) text = pick(T().floats.pleas);
+  g.ebullets.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r, life, dmg, color, text, turn, by: shooter });
 }
 
 function moveToward(g: Game, e: Enemy, speed: number, dt: number) {
@@ -95,21 +101,21 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
         e.b -= dt;
         if (e.b <= 0) {
           e.b = 1.6 / enrage;
-          for (let i = -2; i <= 2; i++) shoot(g, e.x, hy, toP + i * 0.2, 118, 10, '#ffe14d', pick(['P0', 'P1', 'BUG', 'TODO']), 4);
+          for (let i = -2; i <= 2; i++) shoot(g, e.x, hy, toP + i * 0.2, 118, 10, '#ffe14d', pick(['P0', 'P1', 'ERR', 'SOS']), 4);
           g.audio.enemyShot();
         }
         if (e.stateT <= 0) {
           if (chance(0.3)) {
             e.state = 4;
             e.stateT = 1.1;
-            g.addText(e.x, hy - 34, 'DAILY! TODO MUNDO!', '#ffe14d', 1, 1.2);
+            g.addText(e.x, hy - 34, T().floats.daily, '#ffe14d', 1, 1.2);
             g.audio.warn();
           } else {
             e.state = 1;
             e.stateT = 0.9;
             e.a = toP;
             g.audio.warn();
-            g.addText(e.x, hy - 34, 'SPRINT!', '#ff2a2a', 2, 0.9);
+            g.addText(e.x, hy - 34, T().floats.charge, '#ff2a2a', 2, 0.9);
           }
         }
       } else if (e.state === 1) {
@@ -132,7 +138,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
           if (hit) {
             g.addShake(12);
             g.audio.explosion();
-            g.addText(e.x, hy - 34, 'BLOQUEADO', '#ffffff', 1, 1.1);
+            g.addText(e.x, hy - 34, T().floats.blocked, '#ffffff', 1, 1.1);
             bloodFountain(g, e.x, e.y, 16, 20, BLOOD.red);
           }
         }
@@ -243,7 +249,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
         if (e.stateT <= 0) {
           e.state = 1;
           e.stateT = 3.4;
-          g.addText(e.x, hy - 54, 'NÚCLEO EXPOSTO!', '#ffd23d', 2, 1.2);
+          g.addText(e.x, hy - 54, T().floats.exposed, '#ffd23d', 2, 1.2);
           for (let i = 0; i < 6; i++) spawnEnemy(g, chance(0.3) ? 'stack' : chance(0.5) ? 'segfault' : 'walker', e.x + rand(-60, 60), e.y + 70 + rand(0, 40));
         }
       } else if (e.state === 1 && e.stateT <= 0) {
@@ -262,7 +268,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
         g.invert = 0.3;
         g.addShake(16);
         g.audio.bossRoar();
-        g.note = { text: phase === 2 ? 'o pixel está se espalhando' : 'não olhe. NÃO OLHE.', t: 3 };
+        g.note = { text: phase === 2 ? T().notes.pixelSpread : T().notes.dontLook, t: 3 };
       }
       const size = phase === 1 ? 6 : phase === 2 ? 15 : 28;
       e.r += (size - e.r) * clamp(dt * 3, 0, 1);
@@ -310,7 +316,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
 
   // tocar no chefe dói
   if (e.kind !== 'pixel' || e.state >= 2) {
-    if (dist(e.x, hy, p.x, p.y - 7) < e.r + 4) hurtPlayer(g, e.def.dmg, e.x, hy);
+    if (dist(e.x, hy, p.x, p.y - 7) < e.r + 4) hurtPlayer(g, e.def.dmg, e.x, hy, e.kind);
   }
 }
 
@@ -346,6 +352,7 @@ export function updateEnemies(g: Game, dt: number) {
 
   for (const e of g.enemies) {
     if (e.dead) continue;
+    shooter = e.kind;
     e.t += dt;
     e.flash = Math.max(0, e.flash - dt);
     e.atkCd = Math.max(0, e.atkCd - dt);
@@ -480,7 +487,7 @@ export function updateEnemies(g: Game, dt: number) {
             // explode: machuca jogador e quem estiver por perto
             e.hp = 0;
             killEnemy(g, e, rand(6.28), 100, true);
-            if (dist(e.x, e.y, p.x, p.y) < 52) hurtPlayer(g, e.def.dmg, e.x, e.y);
+            if (dist(e.x, e.y, p.x, p.y) < 52) hurtPlayer(g, e.def.dmg, e.x, e.y, e.kind);
             continue;
           }
         }
@@ -498,7 +505,7 @@ export function updateEnemies(g: Game, dt: number) {
         e.b -= dt;
         if (los && e.b <= 0) {
           e.b = rand(1.6, 2.6);
-          shoot(g, e.x, e.y - 8, angleTo(e.x, e.y - 8, p.x, p.y - 7), 110, e.def.dmg, '#3aa0ff', pick(['in', 'vaga', 'PJ']), 3);
+          shoot(g, e.x, e.y - 8, angleTo(e.x, e.y - 8, p.x, p.y - 7), 110, e.def.dmg, '#3aa0ff', pick(T().floats.broadcastShots), 3);
           g.audio.enemyShot();
         }
         break;
@@ -510,7 +517,7 @@ export function updateEnemies(g: Game, dt: number) {
     // ataque corpo a corpo
     if (e.atkCd <= 0 && !(e.kind === 'nullp' && e.state === 1) && e.kind !== 'segfault' && dist(e.x, e.y - e.hoff, p.x, p.y - 7) < e.r + 6) {
       e.atkCd = 0.7;
-      const landed = hurtPlayer(g, e.def.dmg, e.x, e.y);
+      const landed = hurtPlayer(g, e.def.dmg, e.x, e.y, e.kind);
       if (landed && g.stats.thorns > 0) {
         hurtEnemy(g, e, 40 * g.stats.thorns, angleTo(p.x, p.y, e.x, e.y), { force: 120, gib: true });
       }

@@ -2,7 +2,7 @@ import { drawText } from '../core/font';
 import { H, W, chance, clamp, makeCanvas, pick, rand } from '../core/util';
 import { P } from './fx';
 import type { Enemy, Game } from './game';
-import { SPR, drawSprite } from './sprites';
+import { SPR, drawSprite, skinSprites } from './sprites';
 
 const [lightC, lctx] = makeCanvas(W, H);
 const lightTex = new Map<string, HTMLCanvasElement>();
@@ -44,7 +44,7 @@ const coneTex = (() => {
   return c;
 })();
 
-function drawEnemy(g: Game, ctx: CanvasRenderingContext2D, e: Enemy) {
+export function drawEnemy(g: Game, ctx: CanvasRenderingContext2D, e: Enemy) {
   const flash = e.flash > 0;
   if (e.spawnT > 0.05) {
     // materializando: chuvisco antes de virar corpo
@@ -158,7 +158,12 @@ function drawKernel(g: Game, ctx: CanvasRenderingContext2D, e: Enemy, flash: boo
   ctx.fillRect(cx - s + 2, cy - s + 2, s * 2 - 4, s * 2 - 4);
   ctx.fillStyle = '#10309f';
   ctx.fillRect(cx - 14, cy - 14, 28, 28);
-  drawText(ctx, ':(', cx, cy - 9, '#ffffff', { align: 'center', scale: 2 });
+  // um olho, com o pixel morto no centro
+  ctx.fillStyle = '#dfe6ee';
+  ctx.fillRect(cx - 9, cy - 5, 18, 8);
+  ctx.fillRect(cx - 6, cy - 7, 12, 12);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(cx - 2, cy - 3, 4, 4);
   ctx.fillStyle = Math.sin(g.time * 8) > 0 ? '#ff2bd6' : '#2bfff2';
   ctx.fillRect(cx - 12, cy + 8, 24, 2);
   drawText(ctx, 'PANIC', cx, cy - s - 14, '#2bfff2', { align: 'center' });
@@ -170,7 +175,7 @@ function drawHydra(g: Game, ctx: CanvasRenderingContext2D, e: Enemy, flash: bool
   ctx.strokeStyle = '#2b8f18';
   ctx.lineWidth = e.tier === 3 ? 2 : 1;
   for (const o of g.bosses) {
-    if (o !== e && o.tier >= e.tier) {
+    if (o !== e && o.tier >= e.tier && g.bosses.includes(e)) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       const midX = (cx + o.x) / 2 + Math.sin(g.time * 3 + e.t) * 18;
@@ -231,9 +236,9 @@ function drawMonolith(g: Game, ctx: CanvasRenderingContext2D, e: Enemy, flash: b
   ctx.fillStyle = '#04140a';
   ctx.fillRect(x + 8, y + 6, w - 16, 15);
   const scroll = Math.floor(g.time * 6);
-  for (let i = 0; i < 3; i++) {
-    const col = ['PERFORM MORTE', 'GOTO 1974', 'MOVE ZERO TO', 'STOP RUN.', 'PIC 9(66)'][(scroll + i) % 5];
-    drawText(ctx, col.slice(0, 9), x + 10, y + 7 + i * 5 - 1, '#49ff6e', { alpha: 0.75 });
+  for (let i = 0; i < 2; i++) {
+    const col = ['GOTO 1974', 'MOVE ZERO', 'STOP RUN.', 'PIC 9(66)', 'PERFORM'][(scroll + i) % 5];
+    drawText(ctx, col, x + 10, y + 6 + i * 7, '#49ff6e', { alpha: 0.75 });
   }
   ctx.fillStyle = '#7dff7d';
   for (let i = 0; i < 5; i++) if (Math.sin(g.time * (i + 2) * 2) > 0) ctx.fillRect(x + 6, y + 28 + i * 7, 2, 2);
@@ -277,7 +282,7 @@ function drawPlayer(g: Game, ctx: CanvasRenderingContext2D) {
   if (p.invuln > 0 && p.dashT <= 0 && Math.floor(g.time * 18) % 2 === 0 && p.sudoT <= 0) return;
   ctx.fillStyle = 'rgba(0,0,0,.4)';
   ctx.fillRect(Math.round(p.x) - 4, Math.round(p.y) - 1, 8, 2);
-  const set = p.sudoT > 0 ? SPR.playerGold : SPR.player;
+  const set = p.sudoT > 0 ? SPR.playerGold : skinSprites(g.progress.skin, g.time);
   const fr = p.moving ? 1 + (Math.floor(p.walk) % 2) : 0;
   const px = p.x;
   const py = p.y;
