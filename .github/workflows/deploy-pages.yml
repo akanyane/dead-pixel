@@ -8,7 +8,7 @@ on:
 
 permissions: {}
 
-# Um deploy novo substitui o que ainda estiver na fila.
+# A new deploy replaces whatever is still queued.
 concurrency:
   group: pages
   cancel-in-progress: true

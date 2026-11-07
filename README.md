@@ -2,83 +2,83 @@
 
 # 🩸 DEAD PIXEL
 
-**Sexta-feira, 17:58. Um pixel se apagou. Ninguém mais respondeu.**
+**Friday, 17:58. A pixel went dark. Nobody answered after that.**
 
-Shooter 2D top-down de terror e mistério tecnológico, para navegador.
-5 fases, 5 chefes, 6 armas e um terminal de verdade para digitar `rm -rf` em câmera lenta.
+A top-down 2D tech-horror mystery shooter for the browser.
+5 levels, 5 bosses, 6 weapons and a real terminal for typing `rm -rf` in slow motion.
 
-### [![▶ Jogar agora](https://img.shields.io/badge/%E2%96%B6%20JOGAR%20AGORA-e8222a?style=for-the-badge&logoColor=white)](https://akanyane.github.io/dead-pixel/)
+### [![▶ Play now](https://img.shields.io/badge/%E2%96%B6%20PLAY%20NOW-e8222a?style=for-the-badge&logoColor=white)](https://akanyane.github.io/dead-pixel/)
 
-<sub>De graça, no navegador, sem instalar nada. Precisa de teclado e mouse.</sub>
+<sub>Free, in the browser, nothing to install. Needs a keyboard and a mouse.</sub>
 
 [![Release](https://img.shields.io/github/v/release/akanyane/dead-pixel?style=flat-square&color=39ff88&label=release)](https://github.com/akanyane/dead-pixel/releases)
 [![release-please](https://img.shields.io/github/actions/workflow/status/akanyane/dead-pixel/release-please.yml?style=flat-square&label=release-please)](https://github.com/akanyane/dead-pixel/actions/workflows/release-please.yml)
-[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-ff2a2a?style=flat-square)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-ff2a2a?style=flat-square)](LICENSE)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-2bb8c9?style=flat-square&logo=typescript&logoColor=white)
-![Dependências em runtime: 0](https://img.shields.io/badge/depend%C3%AAncias%20em%20runtime-0-a8ff3e?style=flat-square)
+![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-a8ff3e?style=flat-square)
 
-<img src="docs/screenshots/gameplay.gif" alt="Gameplay do DEAD PIXEL: o jogador atira em uma horda de zumbis no data center, e o chão fica coberto de sangue" width="720">
+<img src="docs/screenshots/gameplay.gif" alt="DEAD PIXEL gameplay: the player shoots a zombie horde in the data center, and the floor gets covered in blood" width="720">
 
 </div>
 
 > [!WARNING]
-> Contém violência pixelada, desmembramento e sangue digital. O menu tem uma opção para reduzir o gore.
+> Contains pixelated violence, dismemberment and digital blood. The options menu can tone the gore down.
 
 ---
 
-## Índice
+## Contents
 
-- [A história](#a-história)
-- [Como jogar agora](#como-jogar-agora)
-- [Controles](#controles)
-- [O que torna o jogo diferente](#o-que-torna-o-jogo-diferente)
-- [O terminal](#o-terminal)
+- [The story](#the-story)
+- [How to play](#how-to-play)
+- [Controls](#controls)
+- [What makes it different](#what-makes-it-different)
+- [The terminal](#the-terminal)
 - [Arsenal](#arsenal)
-- [Bestiário](#bestiário)
-- [Fases e chefes](#fases-e-chefes)
-- [Patches (melhorias)](#patches-melhorias)
+- [Bestiary](#bestiary)
+- [Levels and bosses](#levels-and-bosses)
+- [Patches (upgrades)](#patches-upgrades)
 - [Skins](#skins)
-- [Conquistas](#conquistas)
-- [Idiomas](#idiomas)
-- [Manual e dicas no jogo](#manual-e-dicas-no-jogo)
-- [Pontuação e sequências](#pontuação-e-sequências)
-- [Dicas de sobrevivência](#dicas-de-sobrevivência)
-- [Como foi feito](#como-foi-feito)
-- [Estrutura do projeto](#estrutura-do-projeto)
-- [Desenvolvimento](#desenvolvimento)
-- [Publicando o jogo](#publicando-o-jogo)
-- [Como as releases funcionam](#como-as-releases-funcionam)
-- [Contribuindo](#contribuindo)
-- [Licença](#licença)
+- [Achievements](#achievements)
+- [Languages](#languages)
+- [In-game manual and tips](#in-game-manual-and-tips)
+- [Score and streaks](#score-and-streaks)
+- [Survival tips](#survival-tips)
+- [How it was made](#how-it-was-made)
+- [Project structure](#project-structure)
+- [Development](#development)
+- [Deploying the game](#deploying-the-game)
+- [How releases work](#how-releases-work)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## A história
+## The story
 
-> Sexta-feira, 17:58. Todos os monitores da Vesper Systems mostram a mesma tela.
+> Friday, 17:58. Every monitor at Vesper Systems shows the same screen.
 >
-> Cinza, uniforme. No centro exato, um único pixel apagado.
+> Gray, uniform. In the exact center, a single dark pixel.
 >
-> Ninguém pisca. Depois, todos se levantam ao mesmo tempo.
+> Nobody blinks. Then, all of them stand up at the same time.
 >
-> No seu terminal, alguém que você não conhece escreve: *"Desça."*
+> On your terminal, someone you do not know writes: *"Go down."*
 
-Você é o `root`. Guiado por um operador anônimo, você desce andar por andar, do escritório ao data center, depois aos cabos que ninguém documentou, e ao que está rodando no fundo de tudo isso.
+You are `root`. Guided by an anonymous operator, you go down floor by floor: from the office to the data center, then into the cables nobody documented, and to whatever is running at the bottom of it all.
 
-A cada chefe vencido, um log recuperado revela mais uma parte do que aconteceu. Nem tudo o que o operador diz merece confiança, e o jogo guarda pistas para quem presta atenção: no log de abates, nos tiros inimigos e no próprio terminal.
+Each boss you defeat unlocks a recovered log that reveals more of what happened. Not everything the operator says can be trusted, and the game leaves clues for those who pay attention: in the kill feed, in the enemy shots and in the terminal itself.
 
 > [!TIP]
-> A história funciona melhor sem spoilers. Vá até o final, e depois olhe o boot do jogo de novo.
+> The story works best without spoilers. Play to the end, then watch the game's boot screen again.
 
-## Como jogar agora
+## How to play
 
-### No navegador
+### In the browser
 
-Abra **[akanyane.github.io/dead-pixel](https://akanyane.github.io/dead-pixel/)** e pronto. O site é atualizado sozinho a cada mudança na `main`.
+Open **[akanyane.github.io/dead-pixel](https://akanyane.github.io/dead-pixel/)** and that's it. The site updates itself on every change to `main`.
 
-### Rodando o código
+### From source
 
-Você precisa do [Node.js](https://nodejs.org/) 20 ou mais recente.
+You need [Node.js](https://nodejs.org/) 20 or newer.
 
 ```bash
 git clone https://github.com/akanyane/dead-pixel.git
@@ -87,370 +87,370 @@ npm install
 npm run dev
 ```
 
-Depois, abra o endereço que aparecer no terminal (normalmente http://localhost:5173).
+Then open the address printed in the terminal (usually http://localhost:5173).
 
-### Usando uma release pronta
+### From a release build
 
-1. Baixe o `dead-pixel-vX.Y.Z.zip` na página de [releases](https://github.com/akanyane/dead-pixel/releases).
-2. Extraia o arquivo e sirva a pasta com qualquer servidor estático:
+1. Download `dead-pixel-vX.Y.Z.zip` from the [releases](https://github.com/akanyane/dead-pixel/releases) page.
+2. Extract it and serve the folder with any static server:
 
    ```bash
-   npx serve caminho/da/pasta
+   npx serve path/to/folder
    ```
 
 > [!NOTE]
-> Abrir o `index.html` com dois cliques não funciona: navegadores bloqueiam módulos JavaScript em `file://`. É preciso usar um servidor, mesmo que local.
+> Double-clicking `index.html` won't work: browsers block JavaScript modules on `file://`. You need a server, even a local one.
 
-**Requisitos:** um navegador de desktop atual, teclado e mouse. O jogo não tem controles para celular. WebGL é recomendado para o efeito CRT, mas, sem ele, o jogo roda em Canvas 2D sem o efeito.
+**Requirements:** a modern desktop browser, a keyboard and a mouse. There are no touch controls. WebGL is recommended for the CRT effect; without it, the game runs on plain Canvas 2D without the effect.
 
-## Controles
+## Controls
 
-| Ação | Tecla |
+| Action | Key |
 | --- | --- |
-| Mover | `W` `A` `S` `D` ou setas |
-| Mirar e atirar | Mouse (segure o botão esquerdo) |
-| Dash, com invencibilidade | `Espaço` ou `Shift` |
-| Golpe de pé de cabra | `F` ou botão direito |
-| Trocar de arma | `1` a `6` ou scroll |
-| Abrir o terminal | `Q` ou `Enter` |
-| Pausar | `Esc` ou `P` |
-| Escolher um patch | Clique, ou `1` `2` `3` |
-| Reiniciar a fase depois de morrer | `R` |
+| Move | `W` `A` `S` `D` or arrow keys |
+| Aim and shoot | Mouse (hold left button) |
+| Dash, with invincibility | `Space` or `Shift` |
+| Crowbar strike | `F` or right button |
+| Switch weapon | `1` to `6` or scroll wheel |
+| Open the terminal | `Q` or `Enter` |
+| Pause | `Esc` or `P` |
+| Pick a patch | Click, or `1` `2` `3` |
+| Restart the level after dying | `R` |
 
-Não existe recarga.
+There is no reloading.
 
 <div align="center">
-  <img src="docs/screenshots/menu.jpg" alt="Menu principal, com o título DEAD PIXEL pingando sangue" width="720">
+  <img src="docs/screenshots/menu.jpg" alt="Main menu, with the DEAD PIXEL title dripping blood" width="720">
 </div>
 
-## O que torna o jogo diferente
+## What makes it different
 
-- 🕵️ **Um mistério contado pelo próprio sistema.** Mensagens do operador, logs recuperados e um final que muda o sentido de tudo o que você fez.
-- ⌨️ **Um terminal de verdade como poder especial.** O tempo quase para enquanto você digita comandos, com autocompletar e histórico.
-- 🩸 **O chão guarda tudo.** Cada gota, tripa e explosão fica pintada no mapa até o fim da fase, e você deixa pegadas ao pisar no sangue.
-- 🦴 **Gore com física.** Cabeças, braços, pernas, costelas e olhos voam, quicam, sangram no caminho e ficam onde caíram. Zumbis feridos perdem um braço e continuam vindo.
-- 💥 **Peso em cada tiro.** Tremor de tela, congelamento nos abates pesados, recuo da câmera, cápsulas ejetadas, baterias que explodem em cadeia.
-- 🖥️ **Cara de monitor velho.** Pós-processamento em WebGL com curvatura, scanlines, aberração cromática e glitches quando você apanha.
-- 🎵 **Nenhum arquivo de mídia.** Sprites, efeitos e música são gerados por código. O jogo inteiro cabe em cerca de 75 KB comprimidos.
+- 🕵️ **A mystery told by the system itself.** Operator messages, recovered logs and an ending that changes the meaning of everything you did.
+- ⌨️ **A real terminal as your special power.** Time almost stops while you type commands, with autocomplete and history.
+- 🩸 **The floor remembers everything.** Every drop, gut and explosion stays painted on the map until the level ends, and you leave footprints when you step in blood.
+- 🦴 **Physics-based gore.** Heads, arms, legs, ribs and eyes fly, bounce, bleed along the way and stay where they land. Wounded zombies lose an arm and keep coming.
+- 💥 **Every shot has weight.** Screen shake, hit-stop on heavy kills, camera kick, ejected shell casings, batteries that explode in chains.
+- 🖥️ **Looks like an old monitor.** WebGL post-processing with curvature, scanlines, chromatic aberration and glitches when you get hit.
+- 🎵 **Zero media files.** Sprites, sound effects and music are all generated by code. The whole game fits in about 75 KB gzipped.
 
-## O terminal
+## The terminal
 
-Aperte `Q` a qualquer momento. O mundo fica em câmera lenta (8% da velocidade) e a música abafa enquanto você digita. Os comandos custam **RAM**, que você ganha matando inimigos e coletando pentes de memória.
+Press `Q` at any time. The world drops to slow motion (8% speed) and the music muffles while you type. Commands cost **RAM**, which you earn by killing enemies and picking up memory sticks.
 
-- `Tab` completa o comando.
-- `↑` e `↓` navegam pelo histórico.
-- `Esc` fecha o terminal.
+- `Tab` completes the command.
+- `↑` and `↓` browse the history.
+- `Esc` closes the terminal.
 
-| Comando | Também aceita | Custo | Efeito |
+| Command | Also accepts | Cost | Effect |
 | --- | --- | --- | --- |
-| `ping` | `ping -c 1`, `ping localhost` | 60 MB | Atordoa os inimigos e apaga os tiros deles |
-| `fork` | `fork()`, `./fork` | 150 MB | Cria um clone que atira por 20 s (até 4 ao mesmo tempo) |
-| `overclock` | `oc`, `overclock --force` | 180 MB | 8 s com tiro e movimento acelerados |
-| `revert` | `git revert`, `git revert head` | 200 MB | Recupera 50 de HP |
-| `kill` | `kill -9`, `killall`, `pkill zumbi` | 250 MB | Raio em até 14 alvos próximos, com 240 de dano |
-| `sudo` | `sudo su`, `sudo -i` | 300 MB | 6 s invencível, com dano em dobro |
-| `rm` | `rm -rf`, `rm -rf /`, `rm -rf *` | 450 MB | Causa 500 de dano em tudo que está na tela |
+| `ping` | `ping -c 1`, `ping localhost` | 60 MB | Stuns enemies and erases their shots |
+| `fork` | `fork()`, `./fork` | 150 MB | Spawns a clone that shoots for 20 s (up to 4 at once) |
+| `overclock` | `oc`, `overclock --force` | 180 MB | 8 s of faster shooting and movement |
+| `revert` | `git revert`, `git revert head` | 200 MB | Restores 50 HP |
+| `kill` | `kill -9`, `killall`, `pkill zombie` | 250 MB | Lightning on up to 14 nearby targets, 240 damage each |
+| `sudo` | `sudo su`, `sudo -i` | 300 MB | 6 s of invincibility with double damage |
+| `rm` | `rm -rf`, `rm -rf /`, `rm -rf *` | 450 MB | Deals 500 damage to everything on screen |
 
 <div align="center">
-  <img src="docs/screenshots/terminal.jpg" alt="Terminal aberto em bullet time com a lista de comandos e seus custos em RAM" width="720">
+  <img src="docs/screenshots/terminal.jpg" alt="Terminal open in bullet time, listing the commands and their RAM costs" width="720">
 </div>
 
 > [!TIP]
-> O terminal aceita mais do que os comandos da lista. Tente o que você digitaria para investigar um servidor: as respostas contam parte da história.
+> The terminal accepts more than the listed commands. Try what you would type to investigate a server: the answers tell part of the story.
 
 ## Arsenal
 
-Você começa só com a `printf()`. As outras armas aparecem ao longo do jogo, cada uma batizada com o que o comando faz.
+You start with only `printf()`. The other weapons show up along the way, each named after what the command does.
 
-| # | Arma | Tipo | Dano | Intervalo | Munição máx. | Como conseguir |
+| # | Weapon | Type | Damage | Interval | Max ammo | How to get it |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `printf()` | Pistola | 13 | 0,20 s | Infinita | Inicial |
-| 2 | `for(;;)` | Submetralhadora | 9 | 0,07 s | 640 | Caixa após a 1ª wave da fase 1 |
-| 3 | `fork()` | Escopeta (9 projéteis) | 11 cada | 0,62 s | 90 | Vencer o Supervisor |
-| 4 | `kill -9` | Railgun que atravessa tudo | 170 | 0,85 s | 40 | Vencer o Kernel Panic |
-| 5 | `rm -rf` | Lança-chamas | 5 + fogo | 0,035 s | 800 | Vencer a Hidra |
-| 6 | `DROP TABLE` | Lança-foguetes em área | 140 | 0,95 s | 26 | Vencer o Monolito |
+| 1 | `printf()` | Pistol | 13 | 0.20 s | Infinite | Starting weapon |
+| 2 | `for(;;)` | Submachine gun | 9 | 0.07 s | 640 | Crate after wave 1 of level 1 |
+| 3 | `fork()` | Shotgun (9 pellets) | 11 each | 0.62 s | 90 | Defeat the Supervisor |
+| 4 | `kill -9` | Railgun that pierces everything | 170 | 0.85 s | 40 | Defeat Kernel Panic |
+| 5 | `rm -rf` | Flamethrower | 5 + fire | 0.035 s | 800 | Defeat the Hydra |
+| 6 | `DROP TABLE` | Area rocket launcher | 140 | 0.95 s | 26 | Defeat the Monolith |
 
-O **pé de cabra** (`F`) é o seu ataque corpo a corpo. Ele causa 70 de dano em arco, empurra forte e cura 3 de HP a cada abate. É a melhor saída quando uma horda encurrala você.
+The **crowbar** (`F`) is your melee attack. It deals 70 damage in an arc, knocks back hard and heals 3 HP per kill. It's your best way out when a horde corners you.
 
-## Bestiário
+## Bestiary
 
-| Inimigo | HP | Velocidade | O que faz |
+| Enemy | HP | Speed | What it does |
 | --- | --- | --- | --- |
-| **zumbi** (`<defunct>`) | 34 | 30 | Anda e morde. Perde um braço quando ferido |
-| **bug** | 8 | 78 | Enxame rápido em ziguezague |
-| **race condition** | 20 | 96 | Corre de forma errática e nunca chega na hora certa |
-| **broadcast** | 42 | 34 | Mantém distância e dispara pacotes de dados por trás da horda |
-| **memory leak** | 80 | 20 | Deixa poças que ferem e atrasam; ao morrer, vira 3 filhotes |
-| **null pointer** | 46 | 44 | Fica intangível, teleporta para perto de você e atira `null` |
-| **segfault** | 26 | 64 | Corre até você, acende o pavio e explode. Morto antes disso, fere os vizinhos |
-| **stack overflow** | 300 | 18 | Torre de caixas; ao morrer, libera 4 zumbis |
+| **zombie** (`<defunct>`) | 34 | 30 | Walks and bites. Loses an arm when wounded |
+| **bug** | 8 | 78 | Fast zigzagging swarm |
+| **race_condition** | 20 | 96 | Runs erratically and never arrives at the right time |
+| **broadcast** | 42 | 34 | Keeps its distance and fires data packets from behind the horde |
+| **memory_leak** | 80 | 20 | Leaves puddles that hurt and slow you; splits into 3 fragments on death |
+| **null_pointer** | 46 | 44 | Turns intangible, teleports next to you and shoots `null` |
+| **segfault** | 26 | 64 | Runs at you, lights its fuse and explodes. Killed early, it hurts its neighbors |
+| **stack_overflow** | 300 | 18 | A tower of crates; releases 4 zombies on death |
 
-O HP cresce 16% e a velocidade cresce 4% a cada fase. As baterias de nobreak amarelas explodem quando atingidas: use-as a seu favor.
+HP grows 16% and speed grows 4% each level. Yellow UPS batteries explode when hit: use them to your advantage.
 
-## Fases e chefes
+## Levels and bosses
 
-Cada fase tem waves de inimigos e termina em um chefe. Depois de cada wave, você aplica um patch. Ao morrer, recomeça do início da fase, com tudo o que tinha quando entrou nela.
+Each level has enemy waves and ends with a boss. After each wave you apply a patch. If you die, you restart from the beginning of the level with everything you had when you entered it.
 
 ### 1. Open Space, `~/startup`
 
-O andar da Vesper depois do expediente: mesas, monitores ainda ligados e ninguém respondendo.
+The Vesper office floor after hours: desks, monitors still on and nobody answering.
 
-**Chefe: O Supervisor.** Lança leques de alertas e convoca os outros ao redor de si. Antes de cada **avanço**, marca uma linha vermelha e dispara nela. Se bater na parede, fica atordoado e vulnerável.
+**Boss: The Supervisor.** Throws fans of alerts and calls the others to gather around it. Before each **charge**, it draws a red line and dashes along it. If it hits a wall, it gets stunned and vulnerable.
 
-<div align="center"><img src="docs/screenshots/gameplay-open-space.jpg" alt="Fase Open Space com poças de sangue entre as mesas" width="720"></div>
+<div align="center"><img src="docs/screenshots/gameplay-open-space.jpg" alt="Open Space level with pools of blood between the desks" width="720"></div>
 
 ### 2. Data Center, `/var/run`
 
-Corredores estreitos entre racks, LEDs piscando e luz azul fria. A sala não deveria estar quente.
+Narrow corridors between racks, blinking LEDs and cold blue light. The room shouldn't be warm.
 
-**Chefe: Kernel Panic.** Um processador gigante que alterna espirais de tiros, anéis de projéteis, invocações e um laser que varre a sala.
+**Boss: Kernel Panic.** A giant processor that alternates shot spirals, projectile rings, summons and a laser that sweeps the room.
 
-<div align="center"><img src="docs/screenshots/boss-kernel-panic.jpg" alt="Chefe Kernel Panic no data center" width="720"></div>
+<div align="center"><img src="docs/screenshots/boss-kernel-panic.jpg" alt="Kernel Panic boss in the data center" width="720"></div>
 
 ### 3. Undernet, `/dev/null`
 
-Um andar que não está na planta: cavernas geradas proceduralmente, cabos sem documentação e poças tóxicas brilhando no escuro.
+A floor that isn't on the plans: procedurally generated caves, undocumented cables and toxic puddles glowing in the dark.
 
-**Chefe: Hidra de Microsserviços.** Corte um nó e nascem dois menores e mais rápidos, em três gerações. No total, são 7 nós para destruir.
+**Boss: Microservice Hydra.** Cut one node and two smaller, faster ones are born, across three generations. That's 7 nodes to destroy in total.
 
-<div align="center"><img src="docs/screenshots/boss-hidra.jpg" alt="Hidra de Microsserviços em uma caverna verde" width="720"></div>
+<div align="center"><img src="docs/screenshots/boss-hidra.jpg" alt="Microservice Hydra in a green cave" width="720"></div>
 
-### 4. Produção, `/prod`
+### 4. Production, `/prod`
 
-Tudo vermelho. **Faixas de deploy** cruzam o mapa: quando a área pisca, saia dali. Elas queimam você, mas também queimam os inimigos.
+Everything is red. **Deploy strips** cross the map: when the area flashes, get out. They burn you, but they burn enemies too.
 
-**Chefe: O Monolito Legado.** Imóvel e blindado, recebe só 30% do dano até disparar seus lasers e abrir as portas. Ataque com tudo quando o núcleo vermelho aparecer.
+**Boss: The Legacy Monolith.** Immobile and armored, it takes only 30% damage until it fires its lasers and opens its doors. Hit it with everything when the red core shows.
 
-<div align="center"><img src="docs/screenshots/boss-monolito.jpg" alt="O Monolito Legado no fim da sala de produção" width="720"></div>
+<div align="center"><img src="docs/screenshots/boss-monolito.jpg" alt="The Legacy Monolith at the end of the production room" width="720"></div>
 
-### 5. O Pixel, `/dev/pixel`
+### 5. The Pixel, `/dev/pixel`
 
-A sala fica branca, e o sangue ganha um contraste absurdo.
+The room turns white, and the blood gets an absurd amount of contrast.
 
-**Chefe: O Pixel Morto.** Começa minúsculo, teleportando pela sala, e cresce em três fases, enquanto corrompe o chão e dispara lasers giratórios.
+**Boss: The Dead Pixel.** Starts tiny, teleporting around the room, and grows through three phases while it corrupts the floor and fires spinning lasers.
 
-<div align="center"><img src="docs/screenshots/boss-pixel.jpg" alt="Fase final toda branca com o Pixel Morto" width="720"></div>
+<div align="center"><img src="docs/screenshots/boss-pixel.jpg" alt="The all-white final level with the Dead Pixel" width="720"></div>
 
-## Patches (melhorias)
+## Patches (upgrades)
 
-Depois de cada wave, o operador envia três patches, e você aplica um. A combinação muda a cada partida.
+After each wave, the operator sends three patches and you apply one. The combination changes every run.
 
-<div align="center"><img src="docs/screenshots/pull-requests.jpg" alt="Tela de escolha entre três patches" width="720"></div>
+<div align="center"><img src="docs/screenshots/pull-requests.jpg" alt="Patch selection screen with three choices" width="720"></div>
 
-| Tipo | Título | Efeito | Máx. |
+| Type | Title | Effect | Max |
 | --- | --- | --- | --- |
-| `feat` | privilégios elevados | +25% de dano em todas as armas | — |
-| `perf` | compilar com -O3 | +18% de cadência de tiro | — |
-| `perf` | latência reduzida | +12% de velocidade | 4 |
-| `fix` | redundância | +30 de HP máximo e cura 30 | — |
-| `feat` | passagem por referência | Balas atravessam +1 inimigo | 4 |
-| `feat` | retry com backoff | Balas ricocheteiam +1 vez | 3 |
-| `feat` | paralelismo | +1 projétil por disparo | 3 |
-| `feat` | ponto fraco | +15% de crítico, com dano x2,5 | 4 |
-| `feat` | exceção não tratada | +12% de chance de explodir ao matar | 4 |
-| `chore` | alocação extra | +256 MB de RAM máxima e +50% de ganho | 3 |
-| `refactor` | garbage collector | +1 HP a cada 4 abates | 3 |
-| `perf` | resposta imediata | -25% de recarga do dash | 3 |
-| `feat` | colisão | O dash mói quem estiver na frente | 2 |
-| `chore` | coleta automática | Atrai itens de muito mais longe | 2 |
-| `feat` | superaquecimento | Tiros incendeiam o alvo | 2 |
-| `chore` | buffer ampliado | +50% de munição máxima e recarga total | 2 |
-| `feat` | cron job | Um pixel afiado orbita e corta inimigos | 4 |
-| `feat` | firewall | Quem te toca leva 40 de dano | 3 |
-| `fix` | ponto de restauração | Revive uma vez com metade do HP | 1 |
-| `feat` | força bruta | Golpe de pé de cabra com +100% de dano | 2 |
+| `feat` | elevated privileges | +25% damage on all weapons | — |
+| `perf` | compile with -O3 | +18% fire rate | — |
+| `perf` | reduced latency | +12% movement speed | 4 |
+| `fix` | redundancy | +30 max HP and heals 30 | — |
+| `feat` | pass by reference | Bullets pierce +1 enemy | 4 |
+| `feat` | retry with backoff | Bullets bounce +1 time | 3 |
+| `feat` | parallelism | +1 projectile per shot | 3 |
+| `feat` | weak point | +15% crit chance, x2.5 damage | 4 |
+| `feat` | unhandled exception | +12% chance to explode on kill | 4 |
+| `chore` | extra allocation | +256 MB max RAM and +50% gain | 3 |
+| `refactor` | garbage collector | +1 HP every 4 kills | 3 |
+| `perf` | instant response | -25% dash cooldown | 3 |
+| `feat` | collision | The dash shreds whoever is in front | 2 |
+| `chore` | automatic collection | Pulls items from much farther away | 2 |
+| `feat` | overheating | Shots set the target on fire | 2 |
+| `chore` | expanded buffer | +50% max ammo and full refill | 2 |
+| `feat` | cron job | A sharp pixel orbits and slices enemies | 4 |
+| `feat` | firewall | Whoever touches you takes 40 damage | 3 |
+| `fix` | restore point | Revive once with half HP | 1 |
+| `feat` | brute force | Crowbar strike with +100% damage | 2 |
 
 ## Skins
 
-Escolha a roupa do seu `root` em **SKINS**, no menu principal. Quatro já vêm liberadas e seis são conquistadas jogando. O desbloqueio fica salvo, mesmo se você recomeçar o jogo.
+Pick your `root`'s outfit under **SKINS** in the main menu. Four are available from the start and six are earned by playing. Unlocks are saved, even if you start a new game.
 
-<div align="center"><img src="docs/screenshots/skins.jpg" alt="Tela de seleção de skins, com dez personagens e os bloqueados como silhuetas" width="720"></div>
+<div align="center"><img src="docs/screenshots/skins.jpg" alt="Skin selection screen with ten characters, the locked ones shown as silhouettes" width="720"></div>
 
-| Skin | Como liberar |
+| Skin | How to unlock |
 | --- | --- |
-| root, estagiário, invasor, plantonista | Já vêm liberadas |
-| supervisor | Vencer o Supervisor |
-| espectro (troca de cor o tempo todo) | Vencer o Kernel Panic |
-| infectado | Vencer a Hidra de Microsserviços |
-| mainframe | Vencer o Monolito Legado |
-| pixel morto | Vencer o Pixel Morto |
-| açougueiro | Fazer uma sequência de 100 abates |
+| root, intern, intruder, on-call | Available from the start |
+| supervisor | Defeat the Supervisor |
+| spectrum (constantly shifts color) | Defeat Kernel Panic |
+| infected | Defeat the Microservice Hydra |
+| mainframe | Defeat the Legacy Monolith |
+| dead pixel | Defeat the Dead Pixel |
+| butcher | Reach a streak of 100 kills |
 
-As skins são só visuais, e cada uma tem o próprio rastro de dash.
+Skins are cosmetic only, and each one has its own dash trail.
 
-## Conquistas
+## Achievements
 
-São 26 conquistas, disponíveis no menu e na pausa, com barra de progresso nas que dependem de contagem. Elas ficam salvas no navegador. Algumas são ocultas e só revelam o que são depois de conquistadas, para não entregar a história.
+There are 26 achievements, available from the main menu and the pause menu, with progress bars on the ones that count something. They're saved in your browser. Some are hidden and only reveal themselves once unlocked, so they don't spoil the story.
 
-<div align="center"><img src="docs/screenshots/achievements.jpg" alt="Tela de conquistas, com a lista à esquerda e os detalhes da conquista selecionada à direita" width="720"></div>
+<div align="center"><img src="docs/screenshots/achievements.jpg" alt="Achievements screen, with the list on the left and the details of the selected achievement on the right" width="720"></div>
 
-Elas premiam combate (sequências, abates somados, um único `rm -rf` encerrando 20 processos), desafios (vencer um chefe sem levar dano, terminar uma fase só com a `printf()`) e investigação no terminal.
+They reward combat (streaks, total kills, a single `rm -rf` terminating 20 processes), challenges (beating a boss without taking damage, finishing a level with only `printf()`) and investigating through the terminal.
 
-## Idiomas
+## Languages
 
-O jogo inteiro está em **português**, **inglês** e **espanhol**, incluindo história, logs, manual, respostas do terminal e até o texto pintado no chão. Na primeira vez, o idioma segue o do navegador. Para trocar, use `IDIOMA / LANGUAGE` no menu principal ou nas opções.
+The whole game is available in **English**, **Portuguese** and **Spanish**, including the story, logs, manual, terminal replies and even the text painted on the floor. On first launch, the language follows your browser. To change it, use `IDIOMA / LANGUAGE` in the main menu or in the options.
 
-Os comandos do terminal (`rm -rf`, `kill -9`...) são os mesmos em todos os idiomas.
+Terminal commands (`rm -rf`, `kill -9`...) are the same in every language.
 
-## Manual e dicas no jogo
+## In-game manual and tips
 
-O jogo explica a si mesmo, e você pode desligar os cartões e as dicas em **OPÇÕES**:
+The game explains itself, and you can turn the cards and tips off in **OPTIONS**:
 
-- **Manual:** disponível no menu e na pausa, traz fichas com stats e estratégia de cada inimigo, chefe, arma e comando, além de uma aba de dicas.
-- **Cartão de inimigo novo:** na primeira vez que um inimigo ou chefe aparece, o jogo pausa e mostra o que ele faz e como lidar com ele.
-- **Tela de morte:** mostra quem matou você e como evitar isso da próxima vez.
-- **Dicas de contexto:** avisam, por exemplo, para digitar `revert` quando o HP está baixo.
-- **Tela de fase:** cada fase começa com uma dica sobre o jogo.
+- **Manual:** available from the main menu and the pause menu, with stats and strategy for every enemy, boss, weapon and command, plus a tips tab.
+- **New enemy card:** the first time an enemy or boss appears, the game pauses and shows what it does and how to deal with it.
+- **Death screen:** shows who killed you and how to avoid it next time.
+- **Context tips:** for example, a reminder to type `revert` when your HP is low.
+- **Level screen:** each level starts with a gameplay tip.
 
-<div align="center"><img src="docs/screenshots/manual.jpg" alt="Manual do jogo mostrando a ficha do segfault, com stats e como lidar com ele" width="720"></div>
+<div align="center"><img src="docs/screenshots/manual.jpg" alt="Game manual showing the segfault entry, with stats and how to deal with it" width="720"></div>
 
-## Pontuação e sequências
+## Score and streaks
 
-Cada abate em sequência renova um timer de 3,5 segundos, e levar dano encurta esse tempo. O multiplicador de pontos sobe +1 a cada 10 abates seguidos.
+Each kill in a streak resets a 3.5-second timer, and taking damage shortens it. The score multiplier goes up by +1 every 10 consecutive kills.
 
-| Abates | Anúncio |
+| Kills | Announcement |
 | --- | --- |
-| 5 | ENCERRADO |
-| 10 | EM CADEIA |
-| 20 | RECURSÃO |
+| 5 | TERMINATED |
+| 10 | CHAINED |
+| 20 | RECURSION |
 | 35 | STACK OVERFLOW |
 | 50 | KERNEL PANIC |
-| 75 | MEMÓRIA LIBERADA |
-| 100 | NENHUMA RESPOSTA |
-| 150 | ELES SENTEM ISSO? |
-| 250 | QUEM É VOCÊ? |
+| 75 | MEMORY FREED |
+| 100 | NO RESPONSE |
+| 150 | CAN THEY FEEL IT? |
+| 250 | WHO ARE YOU? |
 
-O progresso, o recorde, as skins, as conquistas e as opções ficam salvos no `localStorage` do navegador. Não há servidor nem conta.
+Progress, high score, skins, achievements and options are saved in the browser's `localStorage`. There's no server and no account.
 
-## Dicas de sobrevivência
+## Survival tips
 
-1. **Use o dash para atravessar, não só para fugir.** Você fica invencível durante os 0,17 s do movimento.
-2. **Não guarde RAM demais.** Um `ping` de 60 MB limpa a tela de tiros em um momento de desespero.
-3. **Decore comandos curtos.** `rm` + `Enter` é mais rápido que `rm -rf /`, e `↑` + `Enter` repete o último.
-4. **Atire nas baterias quando a horda passar por elas.** As explosões causam reação em cadeia.
-5. **Mate os segfaults de longe.** Explodindo perto dos outros zumbis, eles trabalham para você.
-6. **Na fase 4, faça os zumbis passarem pelas faixas de deploy.** Quem está nelas leva 400 de dano.
-7. **Contra o Monolito, economize a munição boa** para quando o núcleo estiver exposto.
+1. **Dash through things, not just away from them.** You're invincible for the 0.17 s of the move.
+2. **Don't hoard RAM.** A 60 MB `ping` clears the screen of shots in a pinch.
+3. **Memorize short commands.** `rm` + `Enter` is faster than `rm -rf /`, and `↑` + `Enter` repeats the last one.
+4. **Shoot the batteries when the horde walks past them.** The explosions chain.
+5. **Kill segfaults from a distance.** When they blow up next to other zombies, they work for you.
+6. **In level 4, lure zombies through the deploy strips.** Anything inside takes 400 damage.
+7. **Against the Monolith, save your best ammo** for when the core is exposed.
 
-## Como foi feito
+## How it was made
 
-O jogo é TypeScript puro sobre Canvas 2D, sem engine e sem dependências em runtime. O Vite e o TypeScript são usados só em desenvolvimento e no build.
+The game is plain TypeScript on top of Canvas 2D, with no engine and no runtime dependencies. Vite and TypeScript are only used for development and the build.
 
 ```mermaid
 flowchart LR
-    I[Teclado e mouse] --> U[Update]
-    subgraph Jogo
-        U --> C[Combate e projéteis]
-        U --> E[IA de inimigos]
-        U --> D[Waves e chefes]
-        U --> F[Partículas e gore]
+    I[Keyboard and mouse] --> U[Update]
+    subgraph Game
+        U --> C[Combat and projectiles]
+        U --> E[Enemy AI]
+        U --> D[Waves and bosses]
+        U --> F[Particles and gore]
     end
-    F -- mancha permanente --> M[(Canvas do chão)]
-    Jogo --> R[Render 480x270]
+    F -- permanent stain --> M[(Floor canvas)]
+    Game --> R[Render 480x270]
     M --> R
-    R --> L[Luz em multiply]
+    R --> L[Multiply lighting]
     L --> H[HUD]
-    H --> W[Shader CRT em WebGL]
-    W --> S[Tela]
+    H --> W[WebGL CRT shader]
+    W --> S[Screen]
 ```
 
-| Sistema | Como funciona |
+| System | How it works |
 | --- | --- |
-| **Resolução** | Tudo é desenhado em 480x270 e ampliado com pixels nítidos, o que garante a aparência de pixel art. |
-| **Gore persistente** | O chão é um canvas único e cada mancha é pintada nele de vez. O sangue acumulado não custa nada por frame, então o mapa pode ficar coberto sem perder desempenho. |
-| **Sprites** | São matrizes de texto convertidas em canvas ao iniciar. A fonte também é um bitmap 5x7 no código, com acentos do português compostos a partir da letra base. |
-| **Caminho até o jogador** | Um único campo de fluxo (BFS sobre os tiles) é recalculado cerca de 4 vezes por segundo e compartilhado por toda a horda. |
-| **Colisões** | Um hash espacial limita as comparações entre balas e inimigos, e entre os próprios inimigos, aos vizinhos próximos. |
-| **Luz** | Luzes aditivas são somadas em um canvas separado, aplicado em `multiply` sobre o mundo. Tiros e olhos dos zumbis são desenhados depois, para brilhar no escuro. |
-| **Idiomas** | Os textos ficam em `i18n.ts`, e os demais idiomas são tipados a partir do português: uma tradução faltando quebra o build. |
-| **Áudio** | Web Audio do início ao fim: efeitos com osciladores e ruído filtrado, mais um sequenciador com trilhas diferentes por fase. |
-| **CRT** | Um fragment shader aplica curvatura, scanlines, bloom, aberração cromática e glitches. Sem WebGL, o jogo continua funcionando sem esse efeito. |
-| **Arenas** | O layout é gerado a cada partida: mesas e salas, corredores de racks, cavernas com autômato celular. Uma checagem de conectividade evita bolsões isolados. |
+| **Resolution** | Everything is drawn at 480x270 and upscaled with crisp pixels, which keeps the pixel-art look. |
+| **Persistent gore** | The floor is a single canvas and each stain is painted onto it once. Accumulated blood costs nothing per frame, so the map can get covered without losing performance. |
+| **Sprites** | Text matrices converted to canvases at startup. The font is also a 5x7 bitmap in code, with Portuguese and Spanish accents composed from the base letter. |
+| **Pathfinding** | A single flow field (BFS over the tiles) is recomputed about 4 times per second and shared by the whole horde. |
+| **Collisions** | A spatial hash limits bullet-vs-enemy and enemy-vs-enemy checks to nearby neighbors. |
+| **Lighting** | Additive lights are summed on a separate canvas and applied with `multiply` over the world. Shots and zombie eyes are drawn afterwards so they glow in the dark. |
+| **Languages** | Strings live in `i18n.ts`, and every language is typed from the same shape: a missing translation breaks the build. |
+| **Audio** | Web Audio from start to finish: effects from oscillators and filtered noise, plus a sequencer with a different track per level. |
+| **CRT** | A fragment shader applies curvature, scanlines, bloom, chromatic aberration and glitches. Without WebGL, the game still works without it. |
+| **Arenas** | The layout is generated every run: desks and rooms, rack corridors, cellular-automaton caves. A connectivity check prevents isolated pockets. |
 
-## Estrutura do projeto
+## Project structure
 
 ```text
 dead-pixel/
 ├── index.html
 ├── src/
-│   ├── main.ts             # Loop principal, menu e máquina de estados das telas
+│   ├── main.ts             # Main loop, menu and screen state machine
 │   ├── core/
-│   │   ├── audio.ts        # Efeitos e música sintetizados
-│   │   ├── crt.ts          # Pós-processamento WebGL
-│   │   ├── font.ts         # Fonte bitmap com acentos
-│   │   ├── input.ts        # Teclado e mouse
-│   │   └── util.ts         # Matemática e helpers
+│   │   ├── audio.ts        # Synthesized effects and music
+│   │   ├── crt.ts          # WebGL post-processing
+│   │   ├── font.ts         # Bitmap font with accents
+│   │   ├── input.ts        # Keyboard and mouse
+│   │   └── util.ts         # Math and helpers
 │   └── game/
-│       ├── data.ts         # ⭐ Inimigos, armas, perks, skins e fases: balanceie aqui
-│       ├── achievements.ts # Lista de conquistas e regras de progresso
-│       ├── i18n.ts         # Todos os textos, em português, inglês e espanhol
-│       ├── screens.ts      # Manual, cartões de inimigo e seleção de skin
-│       ├── game.ts         # Estado, waves, save e progressão
-│       ├── combat.ts       # Jogador, projéteis, dano e explosões
-│       ├── enemies.ts      # IA de inimigos e chefes
-│       ├── terminal.ts     # Comandos do terminal
-│       ├── fx.ts           # Gore, partículas e manchas
-│       ├── map.ts          # Geração e pintura das arenas
-│       ├── render.ts       # Mundo e iluminação
-│       ├── hud.ts          # Interface e telas
-│       └── sprites.ts      # Pixel art em texto
-├── docs/screenshots/       # Imagens deste README
-├── .github/workflows/      # Automação de releases
+│       ├── data.ts         # ⭐ Enemies, weapons, perks, skins and levels: balance here
+│       ├── achievements.ts # Achievement list and progress rules
+│       ├── i18n.ts         # Every string, in Portuguese, English and Spanish
+│       ├── screens.ts      # Manual, enemy cards and skin selection
+│       ├── game.ts         # State, waves, saves and progression
+│       ├── combat.ts       # Player, projectiles, damage and explosions
+│       ├── enemies.ts      # Enemy and boss AI
+│       ├── terminal.ts     # Terminal commands
+│       ├── fx.ts           # Gore, particles and stains
+│       ├── map.ts          # Arena generation and painting
+│       ├── render.ts       # World and lighting
+│       ├── hud.ts          # Interface and screens
+│       └── sprites.ts      # Pixel art as text
+├── docs/screenshots/       # Images used in this README
+├── .github/workflows/      # Release and deploy automation
 └── release-please-config.json
 ```
 
-## Desenvolvimento
+## Development
 
-| Comando | O que faz |
+| Command | What it does |
 | --- | --- |
-| `npm run dev` | Servidor de desenvolvimento com recarga automática |
-| `npm run build` | Typecheck e build de produção em `dist/` |
-| `npm run preview` | Serve o build de produção localmente |
-| `npm run typecheck` | Só o typecheck |
+| `npm run dev` | Development server with hot reload |
+| `npm run build` | Typecheck and production build into `dist/` |
+| `npm run preview` | Serves the production build locally |
+| `npm run typecheck` | Typecheck only |
 
-Em modo de desenvolvimento, o jogo fica em `window.__g`, e `?god` na URL liga a invencibilidade. Nada disso existe no build de produção.
+In development mode the game object is exposed as `window.__g`, and `?god` in the URL turns on invincibility. Neither exists in the production build.
 
 ```js
-__g.startLevel(4);     // vai para a fase final (0 a 4)
-__g.beginPlay();       // pula a história
-__g.player.ram = 512;  // enche a RAM
+__g.startLevel(4);     // jump to the final level (0 to 4)
+__g.beginPlay();       // skip the story
+__g.player.ram = 512;  // fill up RAM
 ```
 
-O projeto ainda não tem testes automatizados.
+The project has no automated tests yet.
 
-## Publicando o jogo
+## Deploying the game
 
-`npm run build` gera um site estático em `dist/`, com caminhos relativos. Ele funciona em qualquer hospedagem estática, inclusive em subpastas, como Vercel, Netlify, Cloudflare Pages ou GitHub Pages.
+`npm run build` produces a static site in `dist/` with relative paths. It works on any static host, including subfolders: Vercel, Netlify, Cloudflare Pages or GitHub Pages.
 
-A versão oficial está no GitHub Pages: o workflow `deploy-pages.yml` compila e publica o jogo a cada push na `main`. Em um fork, ative **Settings > Pages > Source: GitHub Actions** para usar o mesmo fluxo.
+The official version lives on GitHub Pages: the `deploy-pages.yml` workflow builds and publishes the game on every push to `main`. In a fork, enable **Settings > Pages > Source: GitHub Actions** to use the same flow.
 
-## Como as releases funcionam
+## How releases work
 
-As versões são automatizadas pelo [release-please](https://github.com/googleapis/release-please):
+Versioning is automated with [release-please](https://github.com/googleapis/release-please):
 
 ```mermaid
 flowchart LR
-    A[Commit em main] --> B[release-please abre ou atualiza o PR de release]
-    B --> C{Merge do PR?}
-    C -- ainda não --> A
-    C -- sim --> D[Tag, GitHub Release e CHANGELOG]
-    D --> E[Build anexado como .zip]
+    A[Commit to main] --> B[release-please opens or updates the release PR]
+    B --> C{PR merged?}
+    C -- not yet --> A
+    C -- yes --> D[Tag, GitHub Release and CHANGELOG]
+    D --> E[Build attached as .zip]
 ```
 
-1. Os commits em `main` seguem o [Conventional Commits](https://www.conventionalcommits.org/pt-br/). `feat:` sobe a versão minor, `fix:` sobe a patch, e `feat!:` sobe a major.
-2. A action mantém um PR aberto com a próxima versão e o changelog.
-3. Quando esse PR é mergeado, a release é publicada e o jogo compilado é anexado a ela.
+1. Commits to `main` follow [Conventional Commits](https://www.conventionalcommits.org/). `feat:` bumps the minor version, `fix:` bumps the patch, and `feat!:` bumps the major.
+2. The action keeps a PR open with the next version and its changelog.
+3. When that PR is merged, the release is published and the built game is attached to it.
 
-## Contribuindo
+## Contributing
 
-Ideias, bugs e pull requests são bem-vindos. Veja o [CONTRIBUTING.md](CONTRIBUTING.md) para preparar o ambiente e saber onde mexer em cada coisa.
+Ideas, bug reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to set up your environment and find where everything lives.
 
-## Licença
+## License
 
 [MIT](LICENSE).
 
 <div align="center">
   <br>
-  <sub>Não olhe para o pixel.</sub>
+  <sub>Don't look at the pixel.</sub>
 </div>

@@ -6,12 +6,12 @@
       "package-name": "dead-pixel",
       "include-component-in-tag": false,
       "changelog-sections": [
-        { "type": "feat", "section": "Novidades" },
-        { "type": "fix", "section": "Correções" },
-        { "type": "perf", "section": "Desempenho" },
-        { "type": "refactor", "section": "Refatoração", "hidden": true },
-        { "type": "docs", "section": "Documentação", "hidden": true },
-        { "type": "chore", "section": "Manutenção", "hidden": true }
+        { "type": "feat", "section": "Features" },
+        { "type": "fix", "section": "Bug Fixes" },
+        { "type": "perf", "section": "Performance" },
+        { "type": "refactor", "section": "Refactoring", "hidden": true },
+        { "type": "docs", "section": "Documentation", "hidden": true },
+        { "type": "chore", "section": "Chores", "hidden": true }
       ]
     }
   }
