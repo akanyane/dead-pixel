@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#050507" />
+    <meta name="description" content="DEAD PIXEL: um pixel morreu em produção e todo mundo que olhou virou zumbi. Shooter 2D sangrento para navegador." />
+    <title>DEAD PIXEL</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23e8e8e8'/%3E%3Crect x='6' y='6' width='4' height='4' fill='%23000'/%3E%3Crect x='10' y='10' width='2' height='5' fill='%23c1121f'/%3E%3C/svg%3E" />
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #050507;
+        overflow: hidden;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #screen {
+        display: block;
+        aspect-ratio: 16 / 9;
+        width: min(100vw, calc(100vh * 16 / 9));
+        cursor: none;
+        image-rendering: pixelated;
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="screen" tabindex="0" aria-label="DEAD PIXEL, jogo"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
