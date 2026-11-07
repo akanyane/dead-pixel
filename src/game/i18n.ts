@@ -1,6 +1,7 @@
-// Todos os textos do jogo. `en` e `es` são tipados a partir de `pt`, então uma
-// tradução faltando quebra o build em vez de aparecer em branco na tela.
-import type { EnemyKind, WeaponId } from './data';
+// Every string in the game. `en` and `es` share the same type as `pt`, so a
+// missing translation breaks the build instead of showing up blank on screen.
+import type { Action } from '../core/input';
+import type { Difficulty, EnemyKind, WeaponId } from './data';
 
 export type Lang = 'pt' | 'en' | 'es';
 export const LANGS: Lang[] = ['pt', 'en', 'es'];
@@ -24,7 +25,7 @@ interface LevelText {
   story: string[];
   bossLines: [string, string];
   notes: string[];
-  /** Log encontrado ao vencer o chefe. {run} e {prev} viram os números de execução. */
+  /** Log found after beating the boss. {run} and {prev} become run numbers. */
   recovered: string[];
 }
 
@@ -46,13 +47,17 @@ interface Strings {
     gore: string;
     goreLevels: { max: string; normal: string; low: string };
     music: string;
+    sfx: string;
+    adjust: string;
     crt: string;
     tips: string;
+    controls: string;
+    highContrast: string;
     on: string;
     off: string;
     back: string;
   };
-  boot: { press: string; warning: string; needsKeyboard: string };
+  boot: { press: string; warning: string; needsKeyboard: string; touch: string };
   hud: {
     kills: (n: number) => string;
     wave: (i: number, n: number, left: number) => string;
@@ -68,7 +73,7 @@ interface Strings {
     forkLimit: string;
     forkOk: (n: number, pid: number) => string;
     outputs: Record<'ping' | 'overclock' | 'revert' | 'kill' | 'sudo' | 'rm', string>;
-    /** Comandos sem efeito em jogo: pistas da história para quem investigar. */
+    /** Commands with no gameplay effect: story clues for whoever investigates. */
     lore: Record<string, string[]>;
   };
   commands: Record<string, { help: string; long: string }>;
@@ -97,6 +102,8 @@ interface Strings {
     retry: string;
     menu: string;
     epitaphs: string[];
+    hardcore: string;
+    hardcoreRetry: string;
   };
   pause: {
     subtitle: string;
@@ -105,7 +112,7 @@ interface Strings {
     controls: string[];
   };
   ending: {
-    /** Páginas do final, mostradas uma de cada vez. */
+    /** Ending pages, shown one at a time. */
     pages: (run: number) => string[][];
     next: string;
     title: string;
@@ -185,6 +192,44 @@ interface Strings {
   melee: WeaponText & { name: string };
   perks: Record<string, { title: string; desc: string }>;
   levels: LevelText[];
+  modes: {
+    title: string;
+    story: (difficulty: string) => string;
+    difficulty: Record<Difficulty, string>;
+    difficultyDesc: Record<Difficulty, string>;
+    endless: string;
+    endlessDesc: string;
+    locked: string;
+    daily: (date: string) => string;
+    dailyDesc: string;
+    back: string;
+    best: (wave: number, score: number) => string;
+    replaceSave: string;
+  };
+  arcade: {
+    wave: (n: number, left: number) => string;
+    waveNote: (n: number) => string;
+    arena: (title: string) => string;
+    over: string;
+    reached: (wave: number) => string;
+    newBest: string;
+    copy: string;
+    copied: string;
+    share: (label: string, wave: number, score: number, kills: number) => string;
+    endlessLabel: string;
+    dailyLabel: (date: string) => string;
+    retry: string;
+  };
+  controlsScreen: {
+    title: string;
+    actions: Record<Action, string>;
+    press: string;
+    reset: string;
+    nav: string;
+    gamepad: string[];
+  };
+  pad: { hint: string; term: string };
+  touch: { hint: string; term: string; dash: string; melee: string; weapon: string };
   streaks: string[];
   floor: { officeBig: string; officeSmall: string; coldBig: string; coldSmall: string; prod: string };
 }
@@ -195,7 +240,7 @@ const pt: Strings = {
     tagline: 'sexta-feira, 17:58. um pixel se apagou. ninguém mais respondeu.',
     best: (n) => `recorde ${n}`,
     continue: (level, title) => `CONTINUAR  (fase ${level}: ${title})`,
-    newGame: 'NOVO JOGO',
+    newGame: 'JOGAR',
     skins: 'SKINS',
     achievements: 'CONQUISTAS',
     manual: 'MANUAL: INIMIGOS E DICAS',
@@ -207,8 +252,12 @@ const pt: Strings = {
     gore: 'GORE',
     goreLevels: { max: 'MÁXIMO', normal: 'NORMAL', low: 'CONTIDO' },
     music: 'MÚSICA',
+    sfx: 'EFEITOS',
+    adjust: 'setas para os lados ajustam o volume',
     crt: 'EFEITO CRT',
     tips: 'DICAS E CARTÕES',
+    controls: 'CONTROLES',
+    highContrast: 'PERIGOS EM ALTO CONTRASTE',
     on: 'LIGADO',
     off: 'DESLIGADO',
     back: 'VOLTAR',
@@ -217,6 +266,7 @@ const pt: Strings = {
     press: 'clique ou aperte qualquer tecla para entrar como root',
     warning: 'contém violência pixelada e sangue digital',
     needsKeyboard: 'este jogo precisa de teclado e mouse',
+    touch: 'toque na tela para jogar',
   },
   hud: {
     kills: (n) => `${n} abates`,
@@ -305,6 +355,8 @@ const pt: Strings = {
       'op> você sempre cai nessa parte.',
       'op> não há tempo para isso.',
     ],
+    hardcore: 'HARDCORE: não existe outra tentativa.',
+    hardcoreRetry: 'R começa do zero',
   },
   pause: {
     subtitle: 'processo pausado',
@@ -448,6 +500,8 @@ const pt: Strings = {
     cat_noa: { name: '3%', desc: 'Abra o arquivo noa.img no terminal.' },
     ending: { name: 'Só mais uma tentativa', desc: 'Chegue ao fim da execução.' },
     second_run: { name: 'Déjà vu', desc: 'Termine o jogo duas vezes. Você não se lembra da primeira.' },
+    endless_25: { name: 'Sem fim', desc: 'Chegue à wave 25 no modo infinito ou na run diária.' },
+    hard_clear: { name: 'Sob pressão', desc: 'Termine a história no difícil ou no hardcore.' },
     platinum: { name: 'root', desc: 'Consiga todas as outras conquistas.' },
   },
   killers: {
@@ -539,6 +593,49 @@ const pt: Strings = {
       recovered: [],
     },
   ],
+  modes: {
+    title: 'NOVA PARTIDA',
+    story: (d) => `HISTÓRIA: ${d}`,
+    difficulty: { easy: 'FÁCIL', normal: 'NORMAL', hard: 'DIFÍCIL', hardcore: 'HARDCORE' },
+    difficultyDesc: {
+      easy: 'Inimigos com menos HP e dano. Para quem quer a história sem sofrer.',
+      normal: 'O jogo como foi pensado.',
+      hard: 'Mais inimigos, mais HP e mais dano. A pontuação vale 1,5x.',
+      hardcore: 'Como o difícil, mas morrer apaga a partida. A pontuação vale 2x.',
+    },
+    endless: 'MODO INFINITO',
+    endlessDesc: 'Ondas sem fim e chefes que voltam mais fortes a cada volta. Uma vida só.',
+    locked: 'termine a história para liberar',
+    daily: (date) => `RUN DIÁRIA  ${date}`,
+    dailyDesc: 'Mesmo mapa, mesmas ondas e mesmos patches para todo mundo hoje. Uma vida só.',
+    back: 'VOLTAR',
+    best: (wave, score) => `recorde: wave ${wave}, ${score} pontos`,
+    replaceSave: 'começar uma história nova substitui a partida salva',
+  },
+  arcade: {
+    wave: (n, left) => `wave ${n}  |  ${left} procs`,
+    waveNote: (n) => `wave ${n}`,
+    arena: (title) => `nova arena: ${title}`,
+    over: 'FIM DA RUN',
+    reached: (wave) => `você chegou à wave ${wave}`,
+    newBest: 'NOVO RECORDE',
+    copy: 'C copia o resultado',
+    copied: 'RESULTADO COPIADO',
+    share: (label, wave, score, kills) => `DEAD PIXEL, ${label}: wave ${wave}, ${score} pontos, ${kills} abates`,
+    endlessLabel: 'modo infinito',
+    dailyLabel: (date) => `run diária ${date}`,
+    retry: 'R começa uma nova run',
+  },
+  controlsScreen: {
+    title: 'CONTROLES',
+    actions: { up: 'cima', down: 'baixo', left: 'esquerda', right: 'direita', dash: 'dash', melee: 'golpe', terminal: 'terminal', pause: 'pausa' },
+    press: 'aperte a nova tecla  (ESC cancela)',
+    reset: 'RESTAURAR PADRÃO',
+    nav: 'ENTER troca a tecla  |  ESC volta',
+    gamepad: ['controle: analógico esquerdo anda, direito mira, RT atira', 'LT ou A: dash  |  X: golpe  |  Y: terminal  |  LB/RB: arma  |  START: pausa'],
+  },
+  pad: { hint: 'analógico esquerdo anda | direito mira | RT atira | LT dash | X golpe | Y terminal', term: 'cima e baixo escolhem | A executa | B fecha' },
+  touch: { hint: 'esquerda anda  |  direita mira e atira', term: 'toque em um comando para executar', dash: 'DASH', melee: 'GOLPE', weapon: 'ARMA' },
   streaks: ['ENCERRADO', 'EM CADEIA', 'RECURSÃO', 'STACK OVERFLOW', 'KERNEL PANIC', 'MEMÓRIA LIBERADA', 'NENHUMA RESPOSTA', 'ELES SENTEM ISSO?', 'QUEM É VOCÊ?'],
   floor: { officeBig: 'SEXTA, 17:58', officeSmall: 'VESPER SYSTEMS - ANDAR 12', coldBig: 'SALA FRIA', coldSmall: 'RACK 42: ACESSO RESTRITO', prod: 'PRODUÇÃO' },
 };
@@ -549,7 +646,7 @@ const en: Strings = {
     tagline: 'friday, 17:58. a pixel went dark. nobody answered after that.',
     best: (n) => `high score ${n}`,
     continue: (level, title) => `CONTINUE  (level ${level}: ${title})`,
-    newGame: 'NEW GAME',
+    newGame: 'PLAY',
     skins: 'SKINS',
     achievements: 'ACHIEVEMENTS',
     manual: 'MANUAL: ENEMIES AND TIPS',
@@ -561,8 +658,12 @@ const en: Strings = {
     gore: 'GORE',
     goreLevels: { max: 'MAXIMUM', normal: 'NORMAL', low: 'MILD' },
     music: 'MUSIC',
+    sfx: 'SOUND EFFECTS',
+    adjust: 'left and right arrows adjust the volume',
     crt: 'CRT EFFECT',
     tips: 'TIPS AND CARDS',
+    controls: 'CONTROLS',
+    highContrast: 'HIGH CONTRAST HAZARDS',
     on: 'ON',
     off: 'OFF',
     back: 'BACK',
@@ -571,6 +672,7 @@ const en: Strings = {
     press: 'click or press any key to log in as root',
     warning: 'contains pixelated violence and digital blood',
     needsKeyboard: 'this game needs a keyboard and a mouse',
+    touch: 'tap the screen to play',
   },
   hud: {
     kills: (n) => `${n} kills`,
@@ -659,6 +761,8 @@ const en: Strings = {
       'op> you always fall at this part.',
       'op> there is no time for this.',
     ],
+    hardcore: 'HARDCORE: there is no other try.',
+    hardcoreRetry: 'R starts over',
   },
   pause: {
     subtitle: 'process paused',
@@ -802,6 +906,8 @@ const en: Strings = {
     cat_noa: { name: '3%', desc: 'Open the noa.img file in the terminal.' },
     ending: { name: 'Just one more try', desc: 'Reach the end of the run.' },
     second_run: { name: 'Deja vu', desc: 'Finish the game twice. You do not remember the first time.' },
+    endless_25: { name: 'Endless', desc: 'Reach wave 25 in endless mode or in the daily run.' },
+    hard_clear: { name: 'Under pressure', desc: 'Finish the story on hard or hardcore.' },
     platinum: { name: 'root', desc: 'Get every other achievement.' },
   },
   killers: {
@@ -893,6 +999,49 @@ const en: Strings = {
       recovered: [],
     },
   ],
+  modes: {
+    title: 'NEW RUN',
+    story: (d) => `STORY: ${d}`,
+    difficulty: { easy: 'EASY', normal: 'NORMAL', hard: 'HARD', hardcore: 'HARDCORE' },
+    difficultyDesc: {
+      easy: 'Enemies have less HP and deal less damage. For the story without the pain.',
+      normal: 'The game as it was meant to be played.',
+      hard: 'More enemies, more HP, more damage. Score is worth 1.5x.',
+      hardcore: 'Like hard, but dying erases the run. Score is worth 2x.',
+    },
+    endless: 'ENDLESS MODE',
+    endlessDesc: 'Endless waves, and bosses that come back stronger every loop. One life.',
+    locked: 'finish the story to unlock',
+    daily: (date) => `DAILY RUN  ${date}`,
+    dailyDesc: 'Same map, same waves and same patches for everyone today. One life.',
+    back: 'BACK',
+    best: (wave, score) => `best: wave ${wave}, ${score} points`,
+    replaceSave: 'starting a new story replaces your saved game',
+  },
+  arcade: {
+    wave: (n, left) => `wave ${n}  |  ${left} procs`,
+    waveNote: (n) => `wave ${n}`,
+    arena: (title) => `new arena: ${title}`,
+    over: 'RUN OVER',
+    reached: (wave) => `you reached wave ${wave}`,
+    newBest: 'NEW BEST',
+    copy: 'C copies the result',
+    copied: 'RESULT COPIED',
+    share: (label, wave, score, kills) => `DEAD PIXEL, ${label}: wave ${wave}, ${score} points, ${kills} kills`,
+    endlessLabel: 'endless mode',
+    dailyLabel: (date) => `daily run ${date}`,
+    retry: 'R starts a new run',
+  },
+  controlsScreen: {
+    title: 'CONTROLS',
+    actions: { up: 'up', down: 'down', left: 'left', right: 'right', dash: 'dash', melee: 'strike', terminal: 'terminal', pause: 'pause' },
+    press: 'press the new key  (ESC cancels)',
+    reset: 'RESET TO DEFAULT',
+    nav: 'ENTER changes the key  |  ESC back',
+    gamepad: ['gamepad: left stick moves, right stick aims, RT shoots', 'LT or A: dash  |  X: strike  |  Y: terminal  |  LB/RB: weapon  |  START: pause'],
+  },
+  pad: { hint: 'left stick move | right stick aim | RT shoot | LT dash | X strike | Y terminal', term: 'up and down choose | A runs | B closes' },
+  touch: { hint: 'left side moves  |  right side aims and shoots', term: 'tap a command to run it', dash: 'DASH', melee: 'STRIKE', weapon: 'WEAPON' },
   streaks: ['TERMINATED', 'CHAINED', 'RECURSION', 'STACK OVERFLOW', 'KERNEL PANIC', 'MEMORY FREED', 'NO RESPONSE', 'CAN THEY FEEL IT?', 'WHO ARE YOU?'],
   floor: { officeBig: 'FRIDAY, 17:58', officeSmall: 'VESPER SYSTEMS - FLOOR 12', coldBig: 'COLD ROOM', coldSmall: 'RACK 42: RESTRICTED ACCESS', prod: 'PRODUCTION' },
 };
@@ -903,7 +1052,7 @@ const es: Strings = {
     tagline: 'viernes, 17:58. un píxel se apagó. nadie volvió a responder.',
     best: (n) => `récord ${n}`,
     continue: (level, title) => `CONTINUAR  (nivel ${level}: ${title})`,
-    newGame: 'NUEVA PARTIDA',
+    newGame: 'JUGAR',
     skins: 'SKINS',
     achievements: 'LOGROS',
     manual: 'MANUAL: ENEMIGOS Y CONSEJOS',
@@ -915,8 +1064,12 @@ const es: Strings = {
     gore: 'GORE',
     goreLevels: { max: 'MÁXIMO', normal: 'NORMAL', low: 'MODERADO' },
     music: 'MÚSICA',
+    sfx: 'EFECTOS',
+    adjust: 'las flechas laterales ajustan el volumen',
     crt: 'EFECTO CRT',
     tips: 'CONSEJOS Y TARJETAS',
+    controls: 'CONTROLES',
+    highContrast: 'PELIGROS EN ALTO CONTRASTE',
     on: 'SÍ',
     off: 'NO',
     back: 'VOLVER',
@@ -925,6 +1078,7 @@ const es: Strings = {
     press: 'haz clic o pulsa cualquier tecla para entrar como root',
     warning: 'contiene violencia pixelada y sangre digital',
     needsKeyboard: 'este juego necesita teclado y ratón',
+    touch: 'toca la pantalla para jugar',
   },
   hud: {
     kills: (n) => `${n} bajas`,
@@ -1013,6 +1167,8 @@ const es: Strings = {
       'op> siempre caes en esta parte.',
       'op> no hay tiempo para esto.',
     ],
+    hardcore: 'HARDCORE: no hay otro intento.',
+    hardcoreRetry: 'R empieza de cero',
   },
   pause: {
     subtitle: 'proceso en pausa',
@@ -1156,6 +1312,8 @@ const es: Strings = {
     cat_noa: { name: '3%', desc: 'Abre el archivo noa.img en el terminal.' },
     ending: { name: 'Solo un intento más', desc: 'Llega al final de la ejecución.' },
     second_run: { name: 'Déjà vu', desc: 'Termina el juego dos veces. No recuerdas la primera.' },
+    endless_25: { name: 'Sin fin', desc: 'Llega a la wave 25 en el modo infinito o en la run diaria.' },
+    hard_clear: { name: 'Bajo presión', desc: 'Termina la historia en difícil o en hardcore.' },
     platinum: { name: 'root', desc: 'Consigue todos los demás logros.' },
   },
   killers: {
@@ -1247,6 +1405,49 @@ const es: Strings = {
       recovered: [],
     },
   ],
+  modes: {
+    title: 'NUEVA PARTIDA',
+    story: (d) => `HISTORIA: ${d}`,
+    difficulty: { easy: 'FÁCIL', normal: 'NORMAL', hard: 'DIFÍCIL', hardcore: 'HARDCORE' },
+    difficultyDesc: {
+      easy: 'Enemigos con menos HP y daño. Para la historia sin sufrir.',
+      normal: 'El juego tal como fue pensado.',
+      hard: 'Más enemigos, más HP y más daño. La puntuación vale 1,5x.',
+      hardcore: 'Como el difícil, pero morir borra la partida. La puntuación vale 2x.',
+    },
+    endless: 'MODO INFINITO',
+    endlessDesc: 'Oleadas sin fin y jefes que vuelven más fuertes en cada vuelta. Una sola vida.',
+    locked: 'termina la historia para desbloquearlo',
+    daily: (date) => `RUN DIARIA  ${date}`,
+    dailyDesc: 'Mismo mapa, mismas oleadas y mismos parches para todos hoy. Una sola vida.',
+    back: 'VOLVER',
+    best: (wave, score) => `récord: wave ${wave}, ${score} puntos`,
+    replaceSave: 'empezar una historia nueva reemplaza la partida guardada',
+  },
+  arcade: {
+    wave: (n, left) => `wave ${n}  |  ${left} procs`,
+    waveNote: (n) => `wave ${n}`,
+    arena: (title) => `nueva arena: ${title}`,
+    over: 'FIN DE LA RUN',
+    reached: (wave) => `llegaste a la wave ${wave}`,
+    newBest: 'NUEVO RÉCORD',
+    copy: 'C copia el resultado',
+    copied: 'RESULTADO COPIADO',
+    share: (label, wave, score, kills) => `DEAD PIXEL, ${label}: wave ${wave}, ${score} puntos, ${kills} bajas`,
+    endlessLabel: 'modo infinito',
+    dailyLabel: (date) => `run diaria ${date}`,
+    retry: 'R empieza una nueva run',
+  },
+  controlsScreen: {
+    title: 'CONTROLES',
+    actions: { up: 'arriba', down: 'abajo', left: 'izquierda', right: 'derecha', dash: 'dash', melee: 'golpe', terminal: 'terminal', pause: 'pausa' },
+    press: 'pulsa la nueva tecla  (ESC cancela)',
+    reset: 'RESTAURAR VALORES',
+    nav: 'ENTER cambia la tecla  |  ESC vuelve',
+    gamepad: ['mando: stick izquierdo mueve, derecho apunta, RT dispara', 'LT o A: dash  |  X: golpe  |  Y: terminal  |  LB/RB: arma  |  START: pausa'],
+  },
+  pad: { hint: 'stick izquierdo mueve | derecho apunta | RT dispara | LT dash | X golpe | Y terminal', term: 'arriba y abajo eligen | A ejecuta | B cierra' },
+  touch: { hint: 'izquierda mueve  |  derecha apunta y dispara', term: 'toca un comando para ejecutarlo', dash: 'DASH', melee: 'GOLPE', weapon: 'ARMA' },
   streaks: ['TERMINADO', 'EN CADENA', 'RECURSIÓN', 'STACK OVERFLOW', 'KERNEL PANIC', 'MEMORIA LIBERADA', 'SIN RESPUESTA', '¿LO SIENTEN?', '¿QUIÉN ERES?'],
   floor: { officeBig: 'VIERNES, 17:58', officeSmall: 'VESPER SYSTEMS - PLANTA 12', coldBig: 'SALA FRÍA', coldSmall: 'RACK 42: ACCESO RESTRINGIDO', prod: 'PRODUCCIÓN' },
 };
@@ -1269,5 +1470,5 @@ export function setLang(l: Lang) {
 
 export const getLang = () => current;
 
-/** Textos do idioma atual. */
+/** Strings for the current language. */
 export const T = () => TABLE[current];

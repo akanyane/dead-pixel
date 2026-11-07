@@ -1,4 +1,4 @@
-// Telas de consulta: manual, cartões de inimigo novo e seleção de skin.
+// Reference screens: manual, new enemy cards, skin selection and achievements.
 import { drawText, wrap } from '../core/font';
 import type { Input } from '../core/input';
 import { H, W } from '../core/util';
@@ -14,14 +14,14 @@ import { COMMANDS } from './terminal';
 const REGULAR: EnemyKind[] = ['walker', 'bug', 'runner', 'recruiter', 'leak', 'leakSmall', 'nullp', 'segfault', 'stack'];
 const BOSSES: EnemyKind[] = ['scrum', 'kernel', 'hydra', 'monolith', 'pixel'];
 
-/** Primeira fase em que o inimigo aparece, calculada das próprias waves. */
+/** First level where the enemy appears, computed from the waves themselves. */
 function firstLevel(kind: EnemyKind) {
   if (kind === 'leakSmall') return firstLevel('leak');
   const i = LEVELS.findIndex((l) => l.boss === kind || l.waves.some((w) => w.spawns.some(([k]) => k === kind)));
   return i + 1;
 }
 
-// ---------- Prévia animada de inimigos ----------
+// ---------- Animated enemy preview ----------
 
 const PREVIEW_SCALE: Partial<Record<EnemyKind, number>> = { walker: 4, runner: 5, bug: 6, leak: 4, leakSmall: 6, stack: 3, nullp: 4, segfault: 4, recruiter: 4, scrum: 1, kernel: 1, hydra: 2, monolith: 1, pixel: 2 };
 const previews = new Map<EnemyKind, Enemy>();
@@ -72,7 +72,7 @@ function paragraph(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   return y + lines.length * 10;
 }
 
-/** Ficha de inimigo, usada no manual e nos cartões em jogo. */
+/** Enemy sheet, used in the manual and in the in-game cards. */
 function enemySheet(g: Game, ctx: CanvasRenderingContext2D, kind: EnemyKind, x: number, y: number, chars: number) {
   const t = T();
   const m = t.manual;
@@ -109,7 +109,7 @@ function manualEntries(g: Game, ctx: CanvasRenderingContext2D, tab: number): Ent
   const t = T();
   const m = t.manual;
   if (tab === 0 || tab === 1) {
-    // nomes que não cabem na lista ficam só com a primeira palavra; a ficha mostra o nome inteiro
+    // names too long for the list keep only the first word; the sheet shows the full name
     const short = (n: string) => (n.length > 20 ? n.split(' ')[0] : n);
     return (tab === 0 ? REGULAR : BOSSES).map((k) => ({ label: short(t.enemies[k].name), draw: (x, y) => enemySheet(g, ctx, k, x, y, DETAIL_CHARS) }));
   }
@@ -214,7 +214,7 @@ export function updateManual(g: Game, input: Input, ctx: CanvasRenderingContext2
   }
   if (input.wheel) g.manualIdx = (g.manualIdx + input.wheel + count()) % count();
 
-  const moved = input.mx !== lastMx || input.my !== lastMy;
+  const moved = !input.usingPad && (input.mx !== lastMx || input.my !== lastMy);
   lastMx = input.mx;
   lastMy = input.my;
   if (input.leftPressed && input.my >= TAB_Y - 2 && input.my < TAB_Y + 12) {
@@ -261,7 +261,7 @@ export function renderManual(g: Game, ctx: CanvasRenderingContext2D) {
   drawText(ctx, `${m.back}  |  ${m.nav}`, W / 2, H - 12, '#6d8a78', { align: 'center' });
 }
 
-// ---------- Cartão de inimigo novo ----------
+// ---------- New enemy card ----------
 
 export function updateIntro(g: Game, input: Input) {
   if (g.stateT > 0.25 && (input.hit('Enter', 'Space') || input.leftPressed)) g.nextIntro();
@@ -331,7 +331,7 @@ export function updateSkins(g: Game, input: Input) {
   if (input.hit('ArrowLeft', 'KeyA')) move(-1);
   if (input.hit('ArrowDown', 'KeyS')) move(COLS);
   if (input.hit('ArrowUp', 'KeyW')) move(-COLS);
-  const moved = input.mx !== lastMx || input.my !== lastMy;
+  const moved = !input.usingPad && (input.mx !== lastMx || input.my !== lastMy);
   lastMx = input.mx;
   lastMy = input.my;
   let hover = -1;
@@ -392,7 +392,7 @@ export function renderSkins(g: Game, ctx: CanvasRenderingContext2D) {
   drawText(ctx, u.nav, W / 2, H - 12, '#6d8a78', { align: 'center' });
 }
 
-// ---------- Conquistas ----------
+// ---------- Achievements ----------
 
 const ACH_X = 10;
 const ACH_Y = 38;
@@ -419,7 +419,7 @@ export function updateAchievements(g: Game, input: Input) {
   if (input.hit('ArrowDown', 'KeyS')) move(1);
   if (input.hit('ArrowUp', 'KeyW')) move(-1);
   if (input.wheel) g.achievementIdx = Math.max(0, Math.min(n - 1, g.achievementIdx + input.wheel));
-  const moved = input.mx !== lastMx || input.my !== lastMy;
+  const moved = !input.usingPad && (input.mx !== lastMx || input.my !== lastMy);
   lastMx = input.mx;
   lastMy = input.my;
   const row = Math.floor((input.my - ACH_Y + 2) / ACH_ROW);

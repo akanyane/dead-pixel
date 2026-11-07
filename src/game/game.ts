@@ -1,16 +1,17 @@
 import { Sound } from '../core/audio';
 import { Input } from '../core/input';
-import { H, TILE, W, chance, clamp, dist, lerp, pick, shuffle, storageDel, storageGet, storageSet } from '../core/util';
+import { DEFAULT_BINDINGS, type Action } from '../core/input';
+import { H, TILE, W, chance, clamp, dist, hashSeed, lerp, pick, shuffle, storageDel, storageGet, storageSet, withSeed } from '../core/util';
 import { ACHIEVEMENTS, PLATINUM } from './achievements';
 import { updateCombat, spawnPickupsForWaveClear, giveWeapon } from './combat';
-import { ENEMIES, KILL_WORDS, LEVELS, PERKS, RUN_BASE, SKINS, STREAKS, VICTIM_NAMES, WEAPONS, type EnemyDef, type EnemyKind, type LevelDef, type PerkDef, type SkinDef, type WeaponId } from './data';
+import { ARCADE_BOSSES, ARCADE_POOL, ARCADE_WAVES, DIFFICULTY, ENEMIES, KILL_WORDS, LEVELS, PERKS, RUN_BASE, SKINS, STREAKS, VICTIM_NAMES, WEAPONS, type Difficulty, type EnemyDef, type EnemyKind, type LevelDef, type PerkDef, type SkinDef, type WaveDef, type WeaponId } from './data';
 import { LANGS, T, detectLang, getLang, setLang, type Lang } from './i18n';
 import { spawnEnemy, updateEnemies, spawnBoss } from './enemies';
 import { updateFx, type Gib, type Particle } from './fx';
 import { GameMap, buildMap } from './map';
 import { Terminal } from './terminal';
 
-/** O que causou o último dano no jogador, para a tela de morte explicar como evitar. */
+/** What last hurt the player, so the death screen can explain how to avoid it. */
 export type KillerId = EnemyKind | 'deploy' | 'corrupt' | 'beam';
 
 export interface Progress {
@@ -234,7 +235,15 @@ export interface Player {
   dead: boolean;
 }
 
-export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log' | 'achievements';
+export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log' | 'achievements' | 'controls';
+
+/** Story, endless or daily run. The last two are "arcade": no story and a single life. */
+export type Mode = 'story' | 'endless' | 'daily';
+
+interface ArcadeBest {
+  endless: { wave: number; score: number };
+  daily: { date: string; wave: number; score: number };
+}
 type Phase = 'wave' | 'waveClear' | 'bossIntro' | 'boss' | 'bossDeath';
 
 interface Snapshot {
@@ -249,12 +258,17 @@ interface Snapshot {
   score: number;
   kills: number;
   deaths: number;
+  difficulty?: Difficulty;
 }
 
 const SAVE_KEY = 'dead-pixel-save-v1';
 const BEST_KEY = 'dead-pixel-best-v1';
 const OPTS_KEY = 'dead-pixel-opts-v1';
 const PROGRESS_KEY = 'dead-pixel-progress-v1';
+const ARCADE_KEY = 'dead-pixel-arcade-v1';
+
+/** Today's date in UTC: the daily run is the same worldwide. */
+export const todayUTC = () => new Date().toISOString().slice(0, 10);
 
 export class Game {
   input: Input;
@@ -266,6 +280,16 @@ export class Game {
   map!: GameMap;
   levelIdx = 0;
   level!: LevelDef;
+  mode: Mode = 'story';
+  difficulty: Difficulty = 'normal';
+  arcadeSeed = 0;
+  arcadeStage = 0;
+  /** Current arcade wave number, counted from the start of the run. */
+  arcadeWave = 0;
+  dailyDate = '';
+  arcadeBest: ArcadeBest = { endless: { wave: 0, score: 0 }, daily: { date: '', wave: 0, score: 0 } };
+  newBest = false;
+  copiedT = 0;
   player!: Player;
   stats: Stats = baseStats();
   perks: Record<string, number> = {};
@@ -342,9 +366,13 @@ export class Game {
 
   goreLevel = 1.2;
   crtOn = true;
-  musicOn = true;
+  /** Volumes in steps from 0 to 10. */
+  musicVol = 7;
+  sfxVol = 10;
   tipsOn = true;
+  highContrast = false;
   god = false;
+  bindings: Record<Action, string[]> = structuredClone(DEFAULT_BINDINGS);
 
   progress: Progress = { beaten: [], bestStreak: 0, deaths: 0, seen: [], skin: 'root', notified: [], runs: 0, achievements: [], kills: 0, meleeKills: 0, lore: [] };
   achievementIdx = 0;
@@ -362,6 +390,10 @@ export class Game {
   manualIdx = 0;
   skinIdx = 0;
   optionsIdx = 0;
+  controlsIdx = 0;
+  rebinding: Action | null = null;
+  menuPage: 'main' | 'play' = 'main';
+  playIdx = 1;
   lastKiller: KillerId = 'walker';
   storyTip = 0;
   toasts: { text: string; t: number }[] = [];
@@ -369,6 +401,7 @@ export class Game {
 
   constructor(input: Input) {
     this.input = input;
+    input.bindings = this.bindings;
     this.term = new Terminal(this);
     this.best = Number(storageGet(BEST_KEY) ?? 0) || 0;
     const raw = storageGet(SAVE_KEY);
@@ -380,31 +413,42 @@ export class Game {
       }
     }
     try {
-      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean; tips?: boolean; lang?: Lang };
+      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean; musicVol?: number; sfxVol?: number; tips?: boolean; lang?: Lang; highContrast?: boolean; bindings?: Partial<Record<Action, string[]>> };
       if (o.tips !== undefined) this.tipsOn = o.tips;
+      if (o.highContrast !== undefined) this.highContrast = o.highContrast;
+      if (o.bindings) for (const a of Object.keys(DEFAULT_BINDINGS) as Action[]) if (Array.isArray(o.bindings[a]) && o.bindings[a].length) this.bindings[a] = o.bindings[a];
       setLang(o.lang && LANGS.includes(o.lang) ? o.lang : detectLang());
       if (o.gore !== undefined) this.goreLevel = o.gore;
       if (o.crt !== undefined) this.crtOn = o.crt;
-      if (o.music !== undefined) this.musicOn = o.music;
+      // old saves only had music on or off
+      if (o.music === false) this.musicVol = 0;
+      if (o.musicVol !== undefined) this.musicVol = clamp(Math.round(o.musicVol), 0, 10);
+      if (o.sfxVol !== undefined) this.sfxVol = clamp(Math.round(o.sfxVol), 0, 10);
     } catch {
       setLang(detectLang());
     }
     try {
+      this.arcadeBest = { ...this.arcadeBest, ...(JSON.parse(storageGet(ARCADE_KEY) ?? '{}') as Partial<ArcadeBest>) };
+    } catch {
+      /* no arcade records yet */
+    }
+    try {
       this.progress = { ...this.progress, ...(JSON.parse(storageGet(PROGRESS_KEY) ?? '{}') as Partial<Progress>) };
     } catch {
-      /* progresso novo */
+      /* fresh progress */
     }
-    // quem já jogou recebe o que já cumpriu, sem uma chuva de avisos
+    // returning players get what they already earned, without a flood of notices
     this.checkAchievements(true);
-    this.audio.musicOn = this.musicOn;
+    this.audio.setVolumes(this.musicVol / 10, this.sfxVol / 10);
     this.map = buildMap('office');
     this.wet = new Uint8Array(this.map.w * this.map.h);
     this.player = this.newPlayer();
   }
 
   saveOptions() {
-    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, music: this.musicOn, tips: this.tipsOn, lang: getLang() }));
-    this.audio.musicOn = this.musicOn;
+    this.bindings = this.input.bindings;
+    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, musicVol: this.musicVol, sfxVol: this.sfxVol, tips: this.tipsOn, highContrast: this.highContrast, bindings: this.bindings, lang: getLang() }));
+    this.audio.setVolumes(this.musicVol / 10, this.sfxVol / 10);
   }
 
   private newPlayer(): Player {
@@ -416,7 +460,7 @@ export class Game {
     };
   }
 
-  /** Número da execução atual: a primeira partida já começa com várias anteriores. */
+  /** Current run number: the first game already starts after several earlier runs. */
   run() {
     return RUN_BASE + 1 + this.progress.runs;
   }
@@ -447,7 +491,7 @@ export class Game {
     this.saveProgress();
   }
 
-  /** Confere as conquistas que dependem só de números salvos. */
+  /** Checks the achievements that depend only on saved numbers. */
   checkAchievements(silent = false) {
     for (const a of ACHIEVEMENTS) {
       if (a.stat && a.id !== PLATINUM && !this.progress.achievements.includes(a.id)) {
@@ -457,7 +501,7 @@ export class Game {
     }
   }
 
-  /** Avisa uma única vez cada skin que acabou de ser liberada. */
+  /** Announces each newly unlocked skin exactly once. */
   private checkUnlocks() {
     for (const s of SKINS) {
       if (s.unlock && this.isSkinUnlocked(s) && !this.progress.notified.includes(s.id)) {
@@ -469,7 +513,7 @@ export class Game {
     this.saveProgress();
   }
 
-  /** Dica de contexto: no máximo uma vez por fase, e só com as dicas ligadas. */
+  /** Context hint: at most once per level, and only with tips turned on. */
   hint(id: string, text: string) {
     if (!this.tipsOn || this.hintsShown.has(id)) return;
     this.hintsShown.add(id);
@@ -482,7 +526,7 @@ export class Game {
     if (this.introQueue.length) this.setState('intro');
   }
 
-  /** Fecha o cartão atual. Quando acaba a fila, o jogo continua de onde estava. */
+  /** Closes the current card. When the queue is empty, the game resumes where it was. */
   nextIntro() {
     const k = this.introQueue.shift();
     if (k && !this.progress.seen.includes(k)) this.progress.seen.push(k);
@@ -497,7 +541,32 @@ export class Game {
     this.stateT = 0;
   }
 
-  newGame() {
+  isArcade() {
+    return this.mode !== 'story';
+  }
+
+  /** Current difficulty multipliers. Arcade always uses normal, so records stay comparable. */
+  diff() {
+    return DIFFICULTY[this.mode === 'story' ? this.difficulty : 'normal'];
+  }
+
+  /** Regular enemy HP: grows per level in the story and per wave in arcade mode. */
+  enemyHpScale() {
+    const base = this.isArcade() ? 1 + (this.arcadeWave - 1) * 0.06 : 1 + this.levelIdx * 0.16;
+    return base * this.diff().hp;
+  }
+
+  /** Boss HP: in arcade mode, every full loop through the 5 bosses makes them much stronger. */
+  bossHpMul() {
+    const loop = this.isArcade() ? Math.floor(this.arcadeStage / ARCADE_BOSSES.length) : 0;
+    return (1 + loop * 0.8) * this.diff().hp;
+  }
+
+  enemySpeedScale() {
+    return this.isArcade() ? 1 + Math.min(this.arcadeWave, 30) * 0.008 : 1 + this.levelIdx * 0.04;
+  }
+
+  private resetRun() {
     this.stats = baseStats();
     this.perks = {};
     this.player = this.newPlayer();
@@ -506,16 +575,98 @@ export class Game {
     this.kills = 0;
     this.deaths = 0;
     this.maxStreak = 0;
+  }
+
+  newGame(difficulty: Difficulty = this.difficulty) {
+    this.mode = 'story';
+    this.difficulty = difficulty;
+    this.resetRun();
     this.startLevel(0);
+  }
+
+  /** Starts an arcade run. The daily run seeds from the date; endless uses a new seed each time. */
+  startArcade(mode: 'endless' | 'daily') {
+    this.mode = mode;
+    this.dailyDate = todayUTC();
+    this.arcadeSeed = mode === 'daily' ? hashSeed(`dead-pixel:${this.dailyDate}`) : Math.floor(Math.random() * 2 ** 32);
+    this.arcadeStage = 0;
+    this.arcadeWave = 0;
+    this.newBest = false;
+    this.resetRun();
+    this.startStage(0);
+  }
+
+  /** An arcade arena: theme and boss cycle, with waves generated from the seed. */
+  private startStage(stage: number) {
+    this.arcadeStage = stage;
+    const i = stage % LEVELS.length;
+    this.levelIdx = i;
+    const boss = ARCADE_BOSSES[stage % ARCADE_BOSSES.length];
+    this.level = { ...LEVELS[i], boss, reward: LEVELS[i].reward, waves: withSeed(this.arcadeSeed + stage * 7919, () => this.arcadeWaves(stage)) };
+    withSeed(this.arcadeSeed + stage * 104729, () => this.prepareArena());
+    this.audio.playMusic(this.level.music);
+    this.setState('play');
+    this.levelStartT = this.time;
+    this.startWave();
+    if (stage > 0) this.note = { text: T().arcade.arena(T().levels[i].title), t: 3 };
+  }
+
+  private arcadeWaves(stage: number): WaveDef[] {
+    const pool = ARCADE_POOL.filter((p) => p.from <= stage);
+    const total = pool.reduce((n, p) => n + p.weight, 0);
+    const waves: WaveDef[] = [];
+    for (let w = 0; w < ARCADE_WAVES; w++) {
+      const n = stage * ARCADE_WAVES + w + 1;
+      const count = Math.round(16 + n * 5.5);
+      const tally = new Map<EnemyKind, number>();
+      for (let k = 0; k < count; k++) {
+        let r = Math.random() * total;
+        const pickd = pool.find((p) => (r -= p.weight) < 0) ?? pool[0];
+        tally.set(pickd.kind, (tally.get(pickd.kind) ?? 0) + 1);
+      }
+      waves.push({ spawns: [...tally.entries()], rate: Math.min(6.5, 1.6 + n * 0.22), maxAlive: Math.min(72, Math.round(20 + n * 2.2)) });
+    }
+    return waves;
+  }
+
+  /** Result text to paste anywhere. */
+  shareText() {
+    const t = T().arcade;
+    const label = this.mode === 'daily' ? t.dailyLabel(this.dailyDate) : t.endlessLabel;
+    return `${t.share(label, this.arcadeWave, this.score, this.kills)}\nhttps://akanyane.github.io/dead-pixel/`;
+  }
+
+  /** Called when the player dies for good: saves arcade records and erases the save on hardcore. */
+  onPlayerDeath() {
+    if (this.isArcade()) {
+      const b = this.arcadeBest;
+      if (this.mode === 'endless') {
+        if (this.arcadeWave > b.endless.wave || (this.arcadeWave === b.endless.wave && this.score > b.endless.score)) {
+          b.endless = { wave: this.arcadeWave, score: this.score };
+          this.newBest = true;
+        }
+      } else {
+        if (b.daily.date !== this.dailyDate) b.daily = { date: this.dailyDate, wave: 0, score: 0 };
+        if (this.arcadeWave > b.daily.wave || (this.arcadeWave === b.daily.wave && this.score > b.daily.score)) {
+          b.daily = { date: this.dailyDate, wave: this.arcadeWave, score: this.score };
+          this.newBest = true;
+        }
+      }
+      storageSet(ARCADE_KEY, JSON.stringify(b));
+    } else if (this.difficulty === 'hardcore') {
+      this.clearSave();
+    }
   }
 
   continueGame() {
     if (!this.snapshot) return this.newGame();
+    this.mode = 'story';
     this.restore(this.snapshot);
     this.startLevel(this.snapshot.level);
   }
 
   private restore(s: Snapshot) {
+    this.difficulty = s.difficulty ?? 'normal';
     this.stats = JSON.parse(JSON.stringify(s.stats)) as Stats;
     this.perks = { ...s.perks };
     this.player = this.newPlayer();
@@ -546,6 +697,7 @@ export class Game {
       score: this.score,
       kills: this.kills,
       deaths: this.deaths,
+      difficulty: this.difficulty,
     };
     storageSet(SAVE_KEY, JSON.stringify(this.snapshot, (_k, v) => (v === Infinity ? 'Infinity' : v)));
   }
@@ -554,6 +706,14 @@ export class Game {
     this.levelIdx = idx;
     this.level = LEVELS[idx];
     this.takeSnapshot(idx);
+    this.prepareArena();
+    this.storyTip = Math.floor(Math.random() * T().manual.tips.length);
+    this.setState('story');
+    this.audio.playMusic(this.level.music);
+  }
+
+  /** Builds the current level's arena and clears everything from the previous one. */
+  private prepareArena() {
     this.map = buildMap(this.level.theme);
     this.wet = new Uint8Array(this.map.w * this.map.h);
     this.enemies = [];
@@ -600,9 +760,6 @@ export class Game {
     this.usedWeapon = false;
     this.usedCommand = false;
     this.barrelBooms = [];
-    this.storyTip = Math.floor(Math.random() * T().manual.tips.length);
-    this.setState('story');
-    this.audio.playMusic(this.level.music);
   }
 
   beginPlay() {
@@ -614,12 +771,17 @@ export class Game {
   startWave() {
     const w = this.level.waves[this.waveIdx];
     const q: EnemyKind[] = [];
-    for (const [k, n] of w.spawns) for (let i = 0; i < n; i++) q.push(k);
+    const mul = this.diff().count;
+    for (const [k, n] of w.spawns) for (let i = 0; i < Math.round(n * mul); i++) q.push(k);
     this.queue = shuffle(q);
     this.phase = 'wave';
     this.spawnAcc = 0;
     this.tookDamage = false;
-    this.note = { text: `${this.waveIdx + 1}/${this.level.waves.length}: ${T().levels[this.levelIdx].notes[this.waveIdx]}`, t: 3.2 };
+    if (this.isArcade()) {
+      this.arcadeWave++;
+      if (this.arcadeWave >= 25) this.unlock('endless_25');
+      this.note = { text: T().arcade.waveNote(this.arcadeWave), t: 2.4 };
+    } else this.note = { text: `${this.waveIdx + 1}/${this.level.waves.length}: ${T().levels[this.levelIdx].notes[this.waveIdx]}`, t: 3.2 };
     this.audio.warn();
     this.queueIntro(w.spawns.map(([k]) => k));
   }
@@ -642,12 +804,13 @@ export class Game {
     return this.bosses.reduce((s, b) => s + Math.max(0, b.hp), 0) + (this.level.boss === 'hydra' ? this.hydraReserve() : 0);
   }
 
-  /** HP ainda "guardado" nas divisões futuras da Hidra. */
+  /** HP still "stored" in the Hydra's future splits. */
   hydraReserve() {
     let total = 0;
+    const hp = ENEMIES.hydra.hp * this.bossHpMul();
     for (const b of this.bosses) {
-      if (b.tier === 3) total += 2 * ENEMIES.hydra.hp * 0.45 + 4 * ENEMIES.hydra.hp * 0.18;
-      else if (b.tier === 2) total += 2 * ENEMIES.hydra.hp * 0.18;
+      if (b.tier === 3) total += 2 * hp * 0.45 + 4 * hp * 0.18;
+      else if (b.tier === 2) total += 2 * hp * 0.18;
     }
     return total;
   }
@@ -655,7 +818,10 @@ export class Game {
   openPerks(after: 'wave' | 'boss' | 'level') {
     this.afterPerk = after;
     const avail = PERKS.filter((p) => !p.max || (this.perks[p.id] ?? 0) < p.max);
-    this.perkChoices = shuffle([...avail]).slice(0, 3);
+    const deal = () => shuffle([...avail]).slice(0, 3);
+    // in the daily run, the same wave offers the same patches to everyone
+    this.perkChoices = this.mode === 'daily' ? withSeed(this.arcadeSeed + this.arcadeWave * 131 + Object.keys(this.perks).length, deal) : deal();
+    this.perkHover = 0;
     this.setState('perk');
     this.audio.ui();
   }
@@ -701,16 +867,21 @@ export class Game {
       if (this.waveIdx < this.level.waves.length) this.startWave();
       else this.startBoss();
     } else if (after === 'level') {
-      if (this.levelIdx + 1 < LEVELS.length) this.startLevel(this.levelIdx + 1);
+      if (this.isArcade()) this.startStage(this.arcadeStage + 1);
+      else if (this.levelIdx + 1 < LEVELS.length) this.startLevel(this.levelIdx + 1);
     }
   }
 
   nextFromClear() {
+    // arcade mode has no story logs: go straight to the patches
+    if (this.isArcade()) return this.openPerks('level');
     this.logT = 0;
     this.setState('log');
   }
 
   retry() {
+    if (this.isArcade()) return this.startArcade(this.mode === 'daily' ? 'daily' : 'endless');
+    if (this.difficulty === 'hardcore') return this.newGame('hardcore');
     this.deaths++;
     const d = this.deaths;
     if (this.snapshot) {
@@ -739,7 +910,7 @@ export class Game {
     storageDel(SAVE_KEY);
   }
 
-  // ---- Helpers de jogo ----
+  // ---- Game helpers ----
 
   addLight(x: number, y: number, r: number, color: string) {
     if (this.dynLights.length < 48) this.dynLights.push({ x, y, r, color });
@@ -780,7 +951,7 @@ export class Game {
     }
     this.checkAchievements();
     const mult = this.multiplier();
-    this.score += e.def.score * mult;
+    this.score += Math.round(e.def.score * mult * this.diff().score);
     const p = this.player;
     p.ram = Math.min(p.maxRam, p.ram + e.def.ram * this.stats.ramGain);
     const next = STREAKS[this.nextStreak];
@@ -798,7 +969,7 @@ export class Game {
     if (chance(0.16)) this.addText(e.x, e.y - e.hoff * 2 - 4, pick(KILL_WORDS), pick(['#fff', '#ffd23d', '#ff7ad9', '#39ffe5']));
   }
 
-  /** Conforme o jogo avança, o log para de dizer "zumbi" e começa a dizer quem era. */
+  /** As the game goes on, the log stops saying "zombie" and starts saying who it was. */
   private victimName(e: Enemy) {
     const human = e.kind === 'walker' || e.kind === 'runner' || e.kind === 'recruiter' || e.kind === 'segfault' || e.kind === 'stack';
     const k = [0, 0.08, 0.35, 0.7, 1][this.levelIdx] ?? 1;
@@ -813,13 +984,13 @@ export class Game {
     return this.enemies.length;
   }
 
-  // ---- Loop de jogo ----
+  // ---- Game loop ----
 
   updatePlay(rawDt: number) {
     const target = this.term.open ? 0.08 : this.phase === 'bossDeath' ? 0.32 : this.slowmo > 0 ? 0.3 : this.player.dead ? 0.2 : 1;
     this.timeScale = lerp(this.timeScale, target, clamp(rawDt * 14, 0, 1));
     this.slowmo = Math.max(0, this.slowmo - rawDt);
-    // hitstop quase congela o mundo, mas continua lendo a entrada do jogador
+    // hitstop nearly freezes the world but keeps reading player input
     const dt = rawDt * (this.hitstop > 0 ? 0.03 : this.timeScale);
     this.hitstop = Math.max(0, this.hitstop - rawDt);
     this.dynLights.length = 0;
@@ -910,13 +1081,16 @@ export class Game {
   }
 
   private finishLevel() {
-    this.saveBest();
-    if (!this.progress.beaten.includes(this.level.boss)) this.progress.beaten.push(this.level.boss);
-    this.checkUnlocks();
+    const arcade = this.isArcade();
+    if (!arcade) {
+      this.saveBest();
+      if (!this.progress.beaten.includes(this.level.boss)) this.progress.beaten.push(this.level.boss);
+      this.checkUnlocks();
+    }
     if (!this.tookDamage) this.unlock('clean_boss');
     if (!this.usedWeapon) this.unlock('pistol_level');
     if (!this.usedCommand) this.unlock('no_commands');
-    // crate esquecida no chão não pode custar uma arma
+    // a crate left on the floor must not cost the player a weapon
     for (const pk of this.pickups) if (pk.kind === 'weapon' && pk.weapon) giveWeapon(this, pk.weapon, false);
     const reward = this.level.reward;
     this.rewardMsg = '';
@@ -924,9 +1098,10 @@ export class Game {
       giveWeapon(this, reward, false);
       this.rewardMsg = `npm install ${WEAPONS[reward].name}`;
     }
-    if (this.levelIdx === LEVELS.length - 1) {
+    if (!arcade && this.levelIdx === LEVELS.length - 1) {
+      if (this.difficulty === 'hard' || this.difficulty === 'hardcore') this.unlock('hard_clear');
       this.clearSave();
-      // o final acontece em silêncio, e a próxima execução já fica contada
+      // the ending plays in silence, and the next run is already counted
       this.endRun = this.run();
       this.progress.runs++;
       this.saveProgress();
@@ -977,7 +1152,7 @@ export class Game {
       this.note.t -= rawDt;
       if (this.note.t <= 0) this.note = null;
     }
-    // nada de aviso em cima do final: a skin liberada espera a última tela
+    // no toast over the ending: the unlocked skin waits for the last screen
     if (this.toasts.length && !this.inEndingPages()) {
       this.toasts[0].t -= rawDt;
       if (this.toasts[0].t <= 0) this.toasts.shift();
@@ -989,7 +1164,7 @@ export class Game {
     this.shownScore = lerp(this.shownScore, this.score, clamp(rawDt * 9, 0, 1));
     if (this.state === 'play') this.updatePlay(rawDt);
     else if (this.state === 'dead') {
-      // o mundo continua em câmera lentíssima atrás da tela de morte
+      // the world keeps going in very slow motion behind the death screen
       const dt = rawDt * 0.08;
       updateFx(this, dt);
     }

@@ -28,7 +28,7 @@ export function sprite(rows: string[], pal: Pal): Sprite {
   return { c, flash: f, w, h };
 }
 
-/** Desenha ancorado no centro dos pés. */
+/** Draws anchored at the center of the feet. */
 export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: number, flip = false, flash = false, scale = 1) {
   const img = flash ? s.flash : s.c;
   const dw = s.w * scale;
@@ -46,7 +46,7 @@ export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, x: number, 
   }
 }
 
-// ---------- Humanos ----------
+// ---------- Humans ----------
 
 const SKIN_Z: Pal = { F: '#7fa66a', f: '#5b7d4c', e: '#ff2a2a', m: '#2a0a0a', r: '#a3101a', R: '#6d0a12', '#': '#1a1016' };
 
@@ -119,7 +119,7 @@ function playerSprites(pal: Pal): Sprite[] {
 const skinCache = new Map<string, Sprite[]>();
 const RGB_STEPS = 12;
 
-/** Quadros do jogador para uma skin. A skin RGB troca de matiz com o tempo. */
+/** Player frames for a skin. The RGB skin shifts hue over time. */
 export function skinSprites(id: string, time = 0): Sprite[] {
   const skin = SKINS.find((s) => s.id === id) ?? SKINS[0];
   const step = skin.rgb ? Math.floor(time * 6) % RGB_STEPS : 0;
@@ -144,10 +144,10 @@ export function buildSprites() {
   SPR.ally = playerSprites({ ...PLAYER_PAL, H: '#264f8f', T: '#17305c', S: '#7fd4ff', C: '#ffffff', L: '#7fd4ff', W: '#7fd4ff' });
 
   SPR.zombies = [
-    zombie({ H: '#2a1d14', T: '#4f5d75', L: '#39415a', B: '#2b3248', K: '#111' }), // moletom
-    zombie({ H: '#6b3a12', T: '#c9ccd3', L: '#a3101a', B: '#23232c', K: '#111' }), // camisa + gravata
-    zombie({ H: '#111118', T: '#6b2d5c', L: '#2ec4b6', B: '#3a3a44', K: '#ddd' }), // camiseta de evento
-    zombie({ H: '#b0a07a', T: '#2f6d55', L: '#f1c40f', B: '#1f2933', K: '#111' }), // crachá
+    zombie({ H: '#2a1d14', T: '#4f5d75', L: '#39415a', B: '#2b3248', K: '#111' }), // hoodie
+    zombie({ H: '#6b3a12', T: '#c9ccd3', L: '#a3101a', B: '#23232c', K: '#111' }), // shirt and tie
+    zombie({ H: '#111118', T: '#6b2d5c', L: '#2ec4b6', B: '#3a3a44', K: '#ddd' }), // event t-shirt
+    zombie({ H: '#b0a07a', T: '#2f6d55', L: '#f1c40f', B: '#1f2933', K: '#111' }), // badge
   ];
 
   const R: Pal = { G: '#c2d4c4', g: '#8ca092', e: '#ff2a2a', m: '#200', r: '#b3101a', T: '#101826', C: '#ff2bd6', c: '#2bfff2', K: '#000' };

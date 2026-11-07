@@ -4,7 +4,7 @@ import { LEVELS, WEAPONS, WEAPON_ORDER, type PerkDef } from './data';
 import type { Game } from './game';
 import { T } from './i18n';
 import { SPR, drawSprite } from './sprites';
-import { COMMANDS } from './terminal';
+import { COMMANDS, TERM_BOX, commandRowY } from './terminal';
 
 export function bar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, k: number, col: string, back = '#14141c') {
   ctx.fillStyle = '#000';
@@ -13,7 +13,7 @@ export function bar(ctx: CanvasRenderingContext2D, x: number, y: number, w: numb
   ctx.fillRect(x, y, w, h);
   ctx.fillStyle = col;
   ctx.fillRect(x, y, Math.round(w * clamp(k, 0, 1)), h);
-  // segmentos estilo gauge de terminal
+  // terminal-style gauge segments
   ctx.fillStyle = 'rgba(0,0,0,.45)';
   for (let i = 4; i < w; i += 5) ctx.fillRect(x + i, y, 1, h);
 }
@@ -26,7 +26,7 @@ const TAG_COLOR: Record<PerkDef['tag'], string> = {
   refactor: '#ff7ad9',
 };
 
-export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
+export function renderHud(g: Game, ctx: CanvasRenderingContext2D, controlsHint = T().hud.controlsHint) {
   const p = g.player;
   const t = T();
   const isVoid = g.map.theme === 'void';
@@ -45,7 +45,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
   if (p.sudoT > 0) drawText(ctx, `SUDO ${p.sudoT.toFixed(1)}s`, 14, 29, '#ffcc33', { shadow });
   if (p.overclockT > 0) drawText(ctx, `OC ${p.overclockT.toFixed(1)}s`, 14, p.sudoT > 0 ? 39 : 29, '#39ffe5', { shadow });
 
-  // Placar
+  // Score
   const score = Math.round(g.shownScore).toString().padStart(7, '0');
   drawText(ctx, score, W - 14, 7, text, { align: 'right', scale: 2, shadow });
   if (g.streak > 1) {
@@ -54,14 +54,14 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
     bar(ctx, W - 74, 34, 60, 2, g.streakT / 3.5, '#ffd23d');
   }
 
-  // log de processos (tail -f)
+  // process log (tail -f)
   let ly = 42;
   for (const l of g.killLog) {
     drawText(ctx, l.text, W - 14, ly, isVoid ? '#555' : l.color, { align: 'right', alpha: Math.min(1, l.t) });
     ly += 9;
   }
 
-  // Chefe ou wave
+  // Boss or wave
   if (g.bosses.length && (g.phase === 'boss' || g.phase === 'bossIntro')) {
     const name = t.enemies[g.level.boss].name;
     const k = g.bossHpSum() / (g.bossTotal || 1);
@@ -71,15 +71,16 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
     bar(ctx, bx, 17, bw, 6, k, isVoid ? '#000' : '#ff2a2a', isVoid ? '#cfcfc8' : '#14141c');
   } else if (g.phase === 'wave') {
     const left = g.queue.length + g.enemies.length;
-    drawText(ctx, t.hud.wave(g.waveIdx + 1, g.level.waves.length, left), W / 2 + 14, 8, text, { align: 'center', shadow });
+    const label = g.isArcade() ? t.arcade.wave(g.arcadeWave, left) : t.hud.wave(g.waveIdx + 1, g.level.waves.length, left);
+    drawText(ctx, label, W / 2 + 14, 8, text, { align: 'center', shadow });
   }
 
-  // Aviso
+  // Notice
   if (g.note) {
     drawText(ctx, g.note.text, W / 2, 32, isVoid ? '#000' : '#a8ffc0', { align: 'center', shadow, alpha: Math.min(1, g.note.t * 2) });
   }
 
-  // Anúncio de sequência
+  // Streak announcement
   if (g.announce) {
     const a = g.announce;
     const pop = clamp((1.6 - a.t) * 12, 0, 1);
@@ -90,7 +91,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
     drawText(ctx, a.text, W / 2 + jx, 62, a.color, { align: 'center', scale: s });
   }
 
-  // Apresentação do chefe
+  // Boss introduction
   if (g.phase === 'bossIntro') {
     const tt = 3 - g.phaseT;
     const cardH = Math.min(58, tt * 240);
@@ -105,12 +106,13 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
     }
   }
 
-  // Dica de controles no começo do jogo
-  if (g.levelIdx === 0 && g.waveIdx === 0 && g.time - g.levelStartT < 14 && !g.term.open) {
-    drawText(ctx, t.hud.controlsHint, W / 2, H - 25, '#ffffff', { align: 'center', shadow: '#000' });
+  // Controls hint at the start of the game
+  const firstWave = g.isArcade() ? g.arcadeWave === 1 : g.levelIdx === 0 && g.waveIdx === 0;
+  if (firstWave && g.time - g.levelStartT < 14 && !g.term.open) {
+    drawText(ctx, controlsHint === T().menu.controls ? t.hud.controlsHint : controlsHint, W / 2, H - 25, '#ffffff', { align: 'center', shadow: '#000' });
   }
 
-  // Barra tmux
+  // tmux bar
   const by = H - 13;
   ctx.fillStyle = '#1f7a45';
   ctx.fillRect(0, by, W, 13);
@@ -118,7 +120,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
   const session = `[${g.level.dir}]`;
   drawText(ctx, session, x, by + 2, '#02150a');
   x += session.length * 6 + 6;
-  // só a arma ativa mostra o nome: com as 6 armas o resto vira "n:munição"
+  // only the active weapon shows its name: with all 6 weapons the rest become "n:ammo"
   WEAPON_ORDER.forEach((id, i) => {
     if (!p.weapons.includes(id)) return;
     const on = p.weapon === id;
@@ -136,7 +138,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
   const usable = COMMANDS.filter((c) => p.ram >= c.cost).length;
   drawText(ctx, `[Q] term ${usable}/${COMMANDS.length}`, W - 10, by + 2, usable && Math.floor(g.time * 2) % 2 ? '#d7ffe4' : '#02150a', { align: 'right' });
 
-  // Sangue na borda da tela quando ferido
+  // Blood on the screen edges when hurt
   if (g.hurtFlash > 0 || hpK < 0.35) {
     const low = hpK < 0.35 && !p.dead ? 0.22 + Math.sin(g.time * 6) * 0.1 : 0;
     const a = Math.max(low, g.hurtFlash * 0.42);
@@ -157,7 +159,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D) {
   if (g.term.open) renderTerminal(g, ctx);
 }
 
-/** Aviso de skin liberada: desenhado por cima de qualquer tela. */
+/** Unlock toast: drawn on top of any screen. */
 export function renderToast(g: Game, ctx: CanvasRenderingContext2D) {
   const toast = g.toasts[0];
   if (!toast || g.inEndingPages()) return;
@@ -172,10 +174,7 @@ export function renderToast(g: Game, ctx: CanvasRenderingContext2D) {
 
 function renderTerminal(g: Game, ctx: CanvasRenderingContext2D) {
   const t = g.term;
-  const x = 8;
-  const w = W - 16;
-  const h = 102;
-  const y = H - 15 - h;
+  const { x, w, h, y } = TERM_BOX;
   ctx.fillStyle = 'rgba(2,10,6,.93)';
   ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = '#39ff88';
@@ -185,7 +184,7 @@ function renderTerminal(g: Game, ctx: CanvasRenderingContext2D) {
   drawText(ctx, `root@deadpixel:${g.level.dir}`, x + 3, y, '#02150a');
   drawText(ctx, T().term.bar, x + w - 3, y, '#02150a', { align: 'right' });
 
-  // Saída
+  // Output
   const leftW = 354;
   const maxLines = 7;
   const lines = t.lines.slice(-maxLines);
@@ -193,18 +192,25 @@ function renderTerminal(g: Game, ctx: CanvasRenderingContext2D) {
     drawText(ctx, l.text.slice(0, Math.floor(leftW / 6)), x + 4, y + 12 + i * 9, l.color);
   });
   const cursor = Math.floor(t.cursorT * 3) % 2 === 0 ? '_' : ' ';
-  drawText(ctx, `# ${t.line}${cursor}`, x + 4, y + h - 12, '#ffffff');
+  const pad = g.input.usingPad;
+  if (pad || g.input.touchActive) drawText(ctx, pad ? T().pad.term : T().touch.term, x + 4, y + h - 12, '#ffd23d');
+  else drawText(ctx, `# ${t.line}${cursor}`, x + 4, y + h - 12, '#ffffff');
 
-  // Comandos com custo
-  const cx = x + leftW + 6;
+  // Commands and their cost
+  const cx = TERM_BOX.listX;
   ctx.fillStyle = '#123';
   ctx.fillRect(cx - 3, y + 10, 1, h - 11);
   const match = new Set(t.matches().map((c) => c.name));
   COMMANDS.forEach((c, i) => {
     const can = g.player.ram >= c.cost;
     const hit = match.has(c.name) && t.line.trim().length > 0;
-    const color = hit ? '#ffffff' : can ? '#39ff88' : '#3b5245';
-    drawText(ctx, `${c.name.padEnd(9)}${String(c.cost).padStart(3)}MB`, cx, y + 12 + i * 10, color);
+    const chosen = pad && t.sel === i;
+    if (chosen) {
+      ctx.fillStyle = can ? '#39ff88' : '#3b5245';
+      ctx.fillRect(cx - 2, commandRowY(i) - 1, x + w - cx - 1, TERM_BOX.row - 1);
+    }
+    const color = chosen ? '#02150a' : hit ? '#ffffff' : can ? '#39ff88' : '#3b5245';
+    drawText(ctx, `${c.name.padEnd(9)}${String(c.cost).padStart(3)}MB`, cx, commandRowY(i), color);
   });
 }
 
@@ -259,7 +265,8 @@ export function renderStory(g: Game, ctx: CanvasRenderingContext2D) {
   ctx.fillRect(0, 0, W, H);
   const lvl = t.levels[g.levelIdx];
   drawText(ctx, t.story.phase(g.levelIdx + 1, LEVELS.length), 34, 30, '#6d8a78');
-  drawText(ctx, `run ${String(g.run()).padStart(4, '0')}`, W - 34, 30, '#2f3d36', { align: 'right' });
+  const diff = g.difficulty === 'normal' ? '' : `${t.modes.difficulty[g.difficulty]}  |  `;
+  drawText(ctx, `${diff}run ${String(g.run()).padStart(4, '0')}`, W - 34, 30, '#2f3d36', { align: 'right' });
   drawText(ctx, lvl.title, 34, 42, '#ff2a2a', { scale: 4, shadow: '#400' });
   drawText(ctx, `$ cd ${g.level.dir}`, 34, 84, '#39ff88');
   const cps = 42;
@@ -275,7 +282,7 @@ export function renderStory(g: Game, ctx: CanvasRenderingContext2D) {
     });
     y += 4;
   }
-  // Dica fixa no rodapé, para aproveitar a pausa entre as fases
+  // Fixed tip at the bottom, to make use of the pause between levels
   const tip = t.manual.tips[g.storyTip % t.manual.tips.length];
   ctx.fillStyle = '#0a1612';
   ctx.fillRect(34, 182, W - 68, 50);
@@ -335,7 +342,7 @@ export function renderDead(g: Game, ctx: CanvasRenderingContext2D) {
   const ep = t.dead.epitaphs;
   drawText(ctx, ep[(g.deaths + g.kills) % ep.length], W / 2, 84, '#dfe6ee', { align: 'center' });
 
-  // Quem matou e como evitar: a morte vira aprendizado
+  // Who killed you and how to avoid it: death becomes a lesson
   const killer = g.lastKiller;
   const info = killer === 'deploy' || killer === 'corrupt' || killer === 'beam' ? t.killers[killer] : t.enemies[killer];
   const lines = wrap(info.tip, 68);
@@ -348,8 +355,25 @@ export function renderDead(g: Game, ctx: CanvasRenderingContext2D) {
   drawText(ctx, t.dead.killedBy(info.name), 42, boxY + 4, '#ff8a8a');
   lines.forEach((l, i) => drawText(ctx, l, 42, boxY + 15 + i * 10, '#dfe6ee'));
 
+  const blink = Math.floor(g.time * 2) % 2 ? '#39ff88' : '#a8ffc0';
+  if (g.isArcade()) {
+    // arcade: one life only, and the result can be shared
+    const a = t.arcade;
+    drawText(ctx, `${a.over}: ${a.reached(g.arcadeWave)}`, W / 2, 160, '#ffd23d', { align: 'center' });
+    drawText(ctx, `${t.dead.score} ${g.score}   |   ${t.dead.kills} ${g.kills}${g.newBest ? `   |   ${a.newBest}` : ''}`, W / 2, 172, '#8fa3bf', { align: 'center' });
+    drawText(ctx, a.retry, W / 2, 184, blink, { align: 'center' });
+    drawText(ctx, a.copy, W / 2, 197, '#a8ff3e', { align: 'center' });
+    drawText(ctx, t.dead.menu, W / 2, 214, '#6d8a78', { align: 'center' });
+    return;
+  }
   drawText(ctx, `${t.dead.score} ${g.score}   |   ${t.dead.kills} ${g.kills}   |   ${t.dead.best} ${Math.max(g.best, g.score)}`, W / 2, 170, '#8fa3bf', { align: 'center' });
-  drawText(ctx, t.dead.retry, W / 2, 190, Math.floor(g.time * 2) % 2 ? '#39ff88' : '#a8ffc0', { align: 'center', scale: 2 });
+  if (g.difficulty === 'hardcore') {
+    drawText(ctx, t.dead.hardcore, W / 2, 186, '#ff5a5a', { align: 'center' });
+    drawText(ctx, t.dead.hardcoreRetry, W / 2, 200, blink, { align: 'center' });
+    drawText(ctx, t.dead.menu, W / 2, 214, '#6d8a78', { align: 'center' });
+    return;
+  }
+  drawText(ctx, t.dead.retry, W / 2, 190, blink, { align: 'center', scale: 2 });
   drawText(ctx, t.dead.menu, W / 2, 214, '#6d8a78', { align: 'center' });
 }
 
@@ -370,7 +394,7 @@ export function renderPause(g: Game, ctx: CanvasRenderingContext2D, items: strin
   t.pause.controls.forEach((l, i) => drawText(ctx, l, W / 2, 200 + i * 11, '#6d8a78', { align: 'center' }));
 }
 
-/** Texto que aparece letra por letra. Retorna true quando já terminou de ser escrito. */
+/** Text typed out letter by letter. Returns true once it has finished. */
 function typed(ctx: CanvasRenderingContext2D, lines: string[], x: number, y: number, chars: number, elapsed: number, cps: number, color: (line: string) => string) {
   let budget = Math.floor(elapsed * cps);
   for (const line of lines) {
@@ -394,7 +418,7 @@ function logLines(g: Game) {
   return T().levels[g.levelIdx].recovered.map((l) => l.replace('{run}', fmt(g.run())).replace('{prev}', String(g.run() - 1)));
 }
 
-/** Fragmento encontrado depois de cada chefe: é aqui que o mistério avança. */
+/** Fragment found after each boss: this is where the mystery moves forward. */
 export function renderLog(g: Game, ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = '#030507';
   ctx.fillRect(0, 0, W, H);
@@ -412,7 +436,7 @@ export function endingPageDone(g: Game) {
   return g.endPage >= pages.length || g.endT * 34 > pageLength(pages[g.endPage]);
 }
 
-/** Avança o final. Retorna true quando já não há mais nada para mostrar. */
+/** Advances the ending. Returns true when there is nothing left to show. */
 export function advanceEnding(g: Game) {
   const pages = T().ending.pages(g.endRun);
   if (g.endPage >= pages.length) return true;
@@ -442,7 +466,7 @@ export function renderVictory(g: Game, ctx: CanvasRenderingContext2D) {
     if (done && Math.floor(g.time * 2) % 2) drawText(ctx, t.next, W / 2, H - 28, '#6d8a78', { align: 'center' });
     return;
   }
-  // a tela de teste volta, limpa, como se nada tivesse acontecido
+  // the test pattern comes back, clean, as if nothing had happened
   ctx.fillStyle = '#ecece6';
   ctx.fillRect(0, 0, W, H);
   drawText(ctx, t.title, W / 2, 46, '#000', { align: 'center', scale: t.title.length > 15 ? 3 : 4 });

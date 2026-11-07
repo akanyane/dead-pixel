@@ -7,8 +7,8 @@ import type { Enemy, Game } from './game';
 
 export function spawnEnemy(g: Game, kind: EnemyKind, x: number, y: number): Enemy {
   const d = ENEMIES[kind];
-  // escala leve de HP por fase: as armas também evoluem
-  const scale = d.hp > 1000 ? 1 : 1 + g.levelIdx * 0.16;
+  // light HP scaling per level, since weapons get better too. Bosses have their own scale.
+  const scale = d.hp > 1000 ? g.bossHpMul() : g.enemyHpScale();
   const e: Enemy = {
     kind, def: d, x, y, vx: 0, vy: 0, hp: d.hp * scale, maxHp: d.hp * scale, r: d.r, hoff: d.hoff, flash: 0, t: rand(5), flip: false,
     state: 0, stateT: rand(0.5, 2), a: rand(6.28), b: 0, wounded: false, burn: 0, stun: 0, skin: Math.floor(rand(4)), speedMul: rand(0.85, 1.2),
@@ -44,7 +44,7 @@ export function spawnBoss(g: Game, kind: EnemyKind) {
   e.stun = 0;
   e.speedMul = 1;
   e.skin = 0;
-  if (kind === 'hydra') setHydraTier(e, 3);
+  if (kind === 'hydra') setHydraTier(g, e, 3);
   if (kind === 'monolith') {
     e.state = 0;
     e.stateT = 6;
@@ -57,12 +57,12 @@ export function spawnBoss(g: Game, kind: EnemyKind) {
   g.bosses.push(e);
 }
 
-// Inimigo sendo atualizado: quem disparou fica registrado na bala, para a tela de morte.
+// Enemy being updated: the shooter is stored on the bullet, for the death screen.
 let shooter: EnemyKind = 'walker';
 
 function shoot(g: Game, x: number, y: number, a: number, sp: number, dmg: number, color: string, text: string | null = null, r = 3, life = 5, turn = 0) {
   if (g.ebullets.length > 420) return;
-  // com o tempo, os disparos começam a dizer o que realmente são: mensagens
+  // over time, the shots start to say what they really are: messages
   if (text && chance([0, 0, 0.15, 0.4, 0.8][g.levelIdx] ?? 0)) text = pick(T().floats.pleas);
   g.ebullets.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r, life, dmg, color, text, turn, by: shooter });
 }
@@ -94,7 +94,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
   const hpK = e.hp / e.maxHp;
   switch (e.kind) {
     case 'scrum': {
-      // estados: 0 anda; 1 prepara sprint; 2 sprint; 3 atordoado; 4 daily (invoca)
+      // states: 0 walk; 1 wind up the charge; 2 charge; 3 stunned; 4 rally (summons)
       const enrage = hpK < 0.5 ? 1.4 : 1;
       if (e.state === 0) {
         moveToward(g, e, e.def.speed * enrage * 1.2, dt);
@@ -162,7 +162,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
       break;
     }
     case 'kernel': {
-      // flutua lentamente; 0 espiral; 1 anéis; 2 invoca + BSOD
+      // floats slowly; 0 spiral; 1 rings; 2 summons + BSOD
       const d = dist(e.x, e.y, p.x, p.y);
       if (d > 90) {
         e.x += Math.cos(toP) * e.def.speed * dt;
@@ -192,7 +192,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
         if (e.b <= 0) {
           e.b = 0.5;
           for (let i = 0; i < 4; i++) spawnEnemy(g, chance(0.4) ? 'runner' : 'bug', e.x + rand(-30, 30), e.y + rand(-20, 30));
-          // laser que varre
+          // sweeping laser
           g.beams.push({ x: e.x, y: hy, a: toP - 0.9, len: 440, w: 3, warn: 0.9, life: 1.6, omega: 1.1, dmg: 20, color: '#2bfff2' });
           g.audio.warn();
           e.state = 0;
@@ -223,7 +223,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
       break;
     }
     case 'monolith': {
-      // imóvel: 0 blindado (só invoca e atira) | 1 portas abertas, leva dano total
+      // immobile: 0 armored (only summons and shoots) | 1 doors open, takes full damage
       e.a += dt;
       e.b -= dt;
       const enrage = hpK < 0.4;
@@ -259,7 +259,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
       break;
     }
     case 'pixel': {
-      // tier: 1 ponto minúsculo, 2 quadrado, 3 forma final
+      // tier: 1 tiny dot, 2 square, 3 final form
       const phase = hpK > 0.66 ? 1 : hpK > 0.33 ? 2 : 3;
       if (phase !== e.state) {
         e.state = phase;
@@ -294,7 +294,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
       }
       if (phase >= 2 && e.b <= 0) {
         e.b = phase === 2 ? 0.8 : 0.5;
-        // tile corrompido caindo perto do jogador
+        // corrupted tile falling near the player
         const tx = Math.floor((p.x + rand(-90, 90)) / TILE) * TILE;
         const ty = Math.floor((p.y + rand(-70, 70)) / TILE) * TILE;
         g.hazards.push({ x: tx, y: ty, w: TILE * 2, h: TILE * 2, warn: 0.9, life: 7, dmg: 16, style: 'corrupt', stained: false });
@@ -314,7 +314,7 @@ function updateBoss(g: Game, e: Enemy, dt: number) {
       break;
   }
 
-  // tocar no chefe dói
+  // touching the boss hurts
   if (e.kind !== 'pixel' || e.state >= 2) {
     if (dist(e.x, hy, p.x, p.y - 7) < e.r + 4) hurtPlayer(g, e.def.dmg, e.x, hy, e.kind);
   }
@@ -330,7 +330,7 @@ export function updateEnemies(g: Game, dt: number) {
     m.computeFlow(p.x, p.y);
   }
 
-  // Separação entre inimigos (usa o hash montado em updateCombat)
+  // Separation between enemies (uses the hash built in updateCombat)
   for (const list of g.hash.values()) {
     for (let i = 0; i < list.length; i++) {
       const a = list[i];
@@ -359,7 +359,7 @@ export function updateEnemies(g: Game, dt: number) {
     e.orbitCd = Math.max(0, e.orbitCd - dt);
     if (e.spawnT > 0) e.spawnT -= dt;
 
-    // queimando
+    // burning
     if (e.burn > 0) {
       e.burn -= dt;
       if (chance(dt * 28)) spawnPart(g, P.Fire, e.x + rand(-e.r, e.r), e.y - rand(0, e.hoff * 2), 0, rand(-8, 8), rand(-30, -6), 0, rand(0.15, 0.4), pick(['#ffec3d', '#ff9a1a', '#ff5a1a']), 2);
@@ -370,7 +370,7 @@ export function updateEnemies(g: Game, dt: number) {
         continue;
       }
     }
-    // sangramento de quem perdeu o braço
+    // bleeding from a lost arm
     if (e.wounded && chance(dt * 12)) {
       m.fctx.fillStyle = pick(BLOOD.red);
       m.fctx.fillRect(Math.round(e.x + rand(-3, 3)), Math.round(e.y), 1, 1);
@@ -394,7 +394,7 @@ export function updateEnemies(g: Game, dt: number) {
 
     const d = dist(e.x, e.y, p.x, p.y);
 
-    // rede de segurança: um inimigo preso fora de vista não pode travar a wave
+    // safety net: an enemy stuck out of sight must not stall the wave
     if (dist(e.x, e.y, e.lastX, e.lastY) > 6) {
       e.lastX = e.x;
       e.lastY = e.y;
@@ -412,7 +412,7 @@ export function updateEnemies(g: Game, dt: number) {
         continue;
       }
     }
-    const speed = e.def.speed * e.speedMul * (e.wounded ? 0.8 : 1) * (1 + g.levelIdx * 0.04);
+    const speed = e.def.speed * e.speedMul * (e.wounded ? 0.8 : 1) * g.enemySpeedScale();
 
     switch (e.kind) {
       case 'walker':
@@ -429,7 +429,7 @@ export function updateEnemies(g: Game, dt: number) {
         break;
       case 'bug':
       case 'runner': {
-        // ziguezague de quem chega sem sincronizar
+        // zigzag of something arriving out of sync
         moveToward(g, e, speed, dt);
         const zig = Math.sin(e.t * (e.kind === 'bug' ? 14 : 9)) * speed * 0.5 * dt;
         const ang = angleTo(e.x, e.y, p.x, p.y) + Math.PI / 2;
@@ -437,7 +437,7 @@ export function updateEnemies(g: Game, dt: number) {
         break;
       }
       case 'nullp': {
-        // 0 visível, 1 fantasma intangível se aproximando, 2 atira
+        // 0 visible, 1 intangible ghost closing in, 2 shoots
         e.stateT -= dt;
         if (e.state === 0) {
           moveToward(g, e, speed * 0.7, dt);
@@ -472,7 +472,7 @@ export function updateEnemies(g: Game, dt: number) {
         break;
       }
       case 'segfault': {
-        // 0 corre; 1 fusível aceso
+        // 0 runs; 1 fuse lit
         if (e.state === 0) {
           moveToward(g, e, speed, dt);
           if (d < 26) {
@@ -484,7 +484,7 @@ export function updateEnemies(g: Game, dt: number) {
           e.stateT -= dt;
           e.flash = Math.sin(e.t * 50) > 0 ? 0.05 : 0;
           if (e.stateT <= 0) {
-            // explode: machuca jogador e quem estiver por perto
+            // explodes: hurts the player and anything nearby
             e.hp = 0;
             killEnemy(g, e, rand(6.28), 100, true);
             if (dist(e.x, e.y, p.x, p.y) < 52) hurtPlayer(g, e.def.dmg, e.x, e.y, e.kind);
@@ -494,7 +494,7 @@ export function updateEnemies(g: Game, dt: number) {
         break;
       }
       case 'recruiter': {
-        // mantém distância e manda "oportunidades incríveis"
+        // keeps its distance and sends "amazing opportunities"
         const los = d < 240 && m.lineClear(e.x, e.y - 8, p.x, p.y - 7);
         if (!los || d > 150) moveToward(g, e, speed, dt);
         else if (d < 90) {
@@ -514,7 +514,7 @@ export function updateEnemies(g: Game, dt: number) {
         break;
     }
 
-    // ataque corpo a corpo
+    // melee attack
     if (e.atkCd <= 0 && !(e.kind === 'nullp' && e.state === 1) && e.kind !== 'segfault' && dist(e.x, e.y - e.hoff, p.x, p.y - 7) < e.r + 6) {
       e.atkCd = 0.7;
       const landed = hurtPlayer(g, e.def.dmg, e.x, e.y, e.kind);
@@ -526,7 +526,7 @@ export function updateEnemies(g: Game, dt: number) {
 
   g.enemies = g.enemies.filter((e) => !e.dead);
 
-  // morte do chefe: reação em cadeia
+  // boss death: chain reaction
   if (g.phase === 'bossDeath') {
     g.bossBoomT -= dt;
     if (g.bossBoomT <= 0) {

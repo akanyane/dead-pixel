@@ -19,7 +19,41 @@ export function shuffle<T>(arr: T[]): T[] {
   return arr;
 }
 
-/** Distância de um ponto até um segmento. Usada em beams e railgun. */
+/** Small deterministic pseudo-random generator (mulberry32). */
+export function seeded(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Runs `fn` with Math.random swapped for a seeded generator. This is how the daily run
+ * produces the same map, waves and patches for everyone without threading a generator
+ * through all of the generation code.
+ */
+export function withSeed<T>(seed: number, fn: () => T): T {
+  const original = Math.random;
+  Math.random = seeded(seed);
+  try {
+    return fn();
+  } finally {
+    Math.random = original;
+  }
+}
+
+/** Turns a string (such as today's date) into a 32-bit seed. */
+export function hashSeed(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/** Distance from a point to a segment. Used by beams and the railgun. */
 export function distToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
   const dx = bx - ax;
   const dy = by - ay;
@@ -50,7 +84,7 @@ export function storageSet(key: string, value: string) {
   try {
     localStorage.setItem(key, value);
   } catch {
-    /* modo privado: o jogo segue sem salvar */
+    /* private mode: the game keeps going without saving */
   }
 }
 
@@ -58,6 +92,6 @@ export function storageDel(key: string) {
   try {
     localStorage.removeItem(key);
   } catch {
-    /* idem */
+    /* same as above */
   }
 }

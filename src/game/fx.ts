@@ -57,7 +57,7 @@ export function spawnPart(g: Game, kind: P, x: number, y: number, z: number, vx:
   g.parts.push({ kind, x, y, z, vx, vy, vz, life, max: life, color, size, stainSet });
 }
 
-/** Mancha permanente no chão: o mapa guarda tudo que aconteceu nele. */
+/** Permanent stain on the floor: the map keeps everything that happened on it. */
 export function splat(g: Game, x: number, y: number, n: number, spread: number, set: string[]) {
   const c = g.map.fctx;
   for (let i = 0; i < n; i++) {
@@ -67,11 +67,11 @@ export function splat(g: Game, x: number, y: number, n: number, spread: number, 
     const s = chance(0.18) ? 2 : 1;
     c.fillRect(Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d * 0.7), s, s);
   }
-  // registra piso molhado para as pegadas do jogador
+  // marks wet floor for the player's footprints
   if (set === BLOOD.red) g.markWet(x, y, spread);
 }
 
-/** Poça sólida e irregular: dá peso aos abates, em contraste com os respingos. */
+/** Solid, irregular pool: gives kills weight, in contrast with the splatter. */
 export function bloodPool(g: Game, x: number, y: number, r: number, set: string[]) {
   const c = g.map.fctx;
   const cx = Math.round(x);
@@ -89,7 +89,7 @@ export function bloodPool(g: Game, x: number, y: number, r: number, set: string[
     const inner = half * 0.72;
     if (inner > 1) c.fillRect(Math.round(cx - inner + rand(-1, 1)), cy + oy, Math.round(inner * 2), 1);
   }
-  // brilho molhado
+  // wet shine
   c.fillStyle = set[4] ?? set[2];
   c.fillRect(cx - Math.round(r * 0.3), cy - Math.round(ry * 0.4), Math.max(1, Math.round(r * 0.3)), 1);
   if (set === BLOOD.red) g.markWet(x, y, r);
@@ -146,7 +146,7 @@ export function updateFx(g: Game, dt: number) {
             const c = m.fctx;
             c.fillStyle = p.color;
             const st = Math.hypot(p.vx, p.vy);
-            // gotas rápidas viram riscos, gotas lentas viram pingos
+            // fast drops become streaks, slow drops become dots
             if (st > 90) {
               c.fillRect(Math.round(p.x), Math.round(p.y), 2 + (st > 170 ? 1 : 0), 1);
             } else {
@@ -277,7 +277,7 @@ export function ring(g: Game, x: number, y: number, speed: number, life: number,
   spawnPart(g, P.Ring, x, y, 0, speed, 0, 0, life, color, 1);
 }
 
-/** O espetáculo principal: desmonta um corpo humano em pedaços. */
+/** The main show: takes a human body apart. */
 export function dismember(g: Game, x: number, y: number, ang: number, force: number, set: string[], heavy = false) {
   const lv = g.goreLevel;
   spawnGib(g, pick(SPR.gibHead), x, y, 12, force * 1.15, ang, set);

@@ -1,8 +1,9 @@
 import { Presenter } from './core/crt';
-import { drawText } from './core/font';
-import { Input } from './core/input';
+import { drawText, wrap } from './core/font';
+import { ACTIONS, Input, TOUCH_BUTTONS, keyLabel } from './core/input';
 import { H, W, makeCanvas, rand } from './core/util';
-import { Game } from './game/game';
+import { DIFFICULTIES } from './game/data';
+import { Game, todayUTC } from './game/game';
 import { advanceEnding, logDone, renderClear, renderDead, renderHud, renderLog, renderPause, renderPerks, renderStory, renderToast, renderVictory, storyDuration } from './game/hud';
 import { LANGS, T, getLang, setLang } from './game/i18n';
 import { renderWorld } from './game/render';
@@ -19,7 +20,7 @@ const game = new Game(input);
 presenter.crtEnabled = game.crtOn;
 
 input.onFirstGesture = () => game.audio.init();
-// abates somados não podem se perder se a aba for fechada no meio de uma fase
+// total kills must not be lost if the tab is closed in the middle of a level
 window.addEventListener('pagehide', () => game.saveProgress());
 
 const params = new URLSearchParams(location.search);
@@ -33,7 +34,8 @@ if (import.meta.env.DEV) {
 const drips = Array.from({ length: 34 }, () => ({ x: Math.floor(rand(92, 388)), len: rand(0, 18), speed: rand(1, 8), w: Math.random() < 0.3 ? 2 : 1 }));
 const parade = Array.from({ length: 9 }, (_, i) => ({ x: rand(-40, W + 40), s: i % 4, speed: rand(8, 20), t: rand(5) }));
 
-type MenuItem = { label: string; act: () => void };
+/** `adjust` lets a row respond to left and right arrows, like the volume rows. */
+type MenuItem = { label: string; act: () => void; adjust?: (d: number) => void; dim?: boolean; desc?: string[] };
 
 function goreName() {
   const l = T().options.goreLevels;
@@ -52,9 +54,31 @@ function cycleLang() {
 
 const onOff = (v: boolean) => (v ? T().options.on : T().options.off);
 
+/** Text volume bar, drawn with the game font. */
+const volBar = (v: number) => `${'|'.repeat(v)}${'.'.repeat(10 - v)} ${v * 10}%`;
+
+function setVolume(kind: 'musicVol' | 'sfxVol', v: number) {
+  game[kind] = Math.max(0, Math.min(10, v));
+  game.saveOptions();
+  if (kind === 'sfxVol') game.audio.ui();
+}
+
 function openManual(from: 'menu' | 'pause') {
   game.returnTo = from;
   game.setState('manual');
+}
+
+function openControls() {
+  game.controlsIdx = 0;
+  game.rebinding = null;
+  game.setState('controls');
+}
+
+/** Copies the arcade result to the clipboard and shows a notice. */
+function copyResult() {
+  const text = game.shareText();
+  const done = () => game.toasts.push({ text: T().arcade.copied, t: 2 });
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, () => undefined);
 }
 
 function openOptions(from: 'menu' | 'pause') {
@@ -63,7 +87,7 @@ function openOptions(from: 'menu' | 'pause') {
   game.setState('options');
 }
 
-// O rótulo de idioma é bilíngue de propósito: precisa ser achado por quem não lê o idioma atual.
+// The language label is bilingual on purpose: people who cannot read the current language must still find it.
 const langLabel = () => `IDIOMA / LANGUAGE: ${T().langName}`;
 
 function menuItems(): MenuItem[] {
@@ -73,7 +97,7 @@ function menuItems(): MenuItem[] {
     const lv = game.snapshot.level;
     items.push({ label: t.menu.continue(lv + 1, t.levels[lv].title), act: () => game.continueGame() });
   }
-  items.push({ label: t.menu.newGame, act: () => game.newGame() });
+  items.push({ label: t.menu.newGame, act: () => { game.menuPage = 'play'; game.playIdx = 1; } });
   items.push({ label: t.menu.skins, act: () => openSkins(game) });
   items.push({ label: t.menu.achievements, act: () => openAchievements(game, 'menu') });
   items.push({ label: t.menu.manual, act: () => openManual('menu') });
@@ -82,13 +106,54 @@ function menuItems(): MenuItem[] {
   return items;
 }
 
+/** PLAY submenu: story difficulties, endless mode and the daily run. */
+function playItems(): MenuItem[] {
+  const t = T();
+  const m = t.modes;
+  const items: MenuItem[] = DIFFICULTIES.map((d) => ({
+    label: m.story(m.difficulty[d]),
+    act: () => game.newGame(d),
+    desc: [m.difficultyDesc[d], ...(game.snapshot ? [m.replaceSave] : [])],
+  }));
+  const unlocked = game.progress.beaten.includes('pixel');
+  const eb = game.arcadeBest.endless;
+  items.push({
+    label: m.endless,
+    dim: !unlocked,
+    act: () => {
+      if (unlocked) game.startArcade('endless');
+      else game.audio.ui(false);
+    },
+    desc: unlocked ? [m.endlessDesc, ...(eb.wave ? [m.best(eb.wave, eb.score)] : [])] : [m.locked],
+  });
+  const db = game.arcadeBest.daily;
+  const today = todayUTC();
+  items.push({ label: m.daily(today), act: () => game.startArcade('daily'), desc: [m.dailyDesc, ...(db.date === today && db.wave ? [m.best(db.wave, db.score)] : [])] });
+  items.push({ label: m.back, act: () => { game.menuPage = 'main'; } });
+  return items;
+}
+
+function controlItems(): MenuItem[] {
+  const c = T().controlsScreen;
+  const items: MenuItem[] = ACTIONS.map((a) => ({
+    label: `${c.actions[a].padEnd(10)} ${game.rebinding === a ? '...' : input.bindings[a].map(keyLabel).join(' / ')}`,
+    act: () => { game.rebinding = a; },
+  }));
+  items.push({ label: c.reset, act: () => { input.resetBindings(); game.saveOptions(); } });
+  items.push({ label: T().options.back, act: () => game.setState('options') });
+  return items;
+}
+
 function optionItems(): MenuItem[] {
   const o = T().options;
   return [
     { label: `${o.gore}: ${goreName()}`, act: cycleGore },
-    { label: `${o.music}: ${onOff(game.musicOn)}`, act: () => { game.musicOn = !game.musicOn; game.saveOptions(); } },
+    { label: `${o.music}: ${volBar(game.musicVol)}`, act: () => setVolume('musicVol', (game.musicVol + 1) % 11), adjust: (d) => setVolume('musicVol', game.musicVol + d) },
+    { label: `${o.sfx}: ${volBar(game.sfxVol)}`, act: () => setVolume('sfxVol', (game.sfxVol + 1) % 11), adjust: (d) => setVolume('sfxVol', game.sfxVol + d) },
     { label: `${o.crt}: ${onOff(game.crtOn)}`, act: () => { game.crtOn = !game.crtOn; presenter.crtEnabled = game.crtOn; game.saveOptions(); } },
     { label: `${o.tips}: ${onOff(game.tipsOn)}`, act: () => { game.tipsOn = !game.tipsOn; game.saveOptions(); } },
+    { label: `${o.highContrast}: ${onOff(game.highContrast)}`, act: () => { game.highContrast = !game.highContrast; game.saveOptions(); } },
+    { label: o.controls, act: openControls },
     { label: langLabel(), act: cycleLang },
     { label: o.back, act: () => game.setState(game.returnTo) },
   ];
@@ -108,7 +173,7 @@ function pauseItems(): MenuItem[] {
 let lastMx = -1;
 let lastMy = -1;
 
-/** Navegação comum dos menus: teclado, hover e clique. Retorna o índice selecionado. */
+/** Shared menu navigation: keyboard, hover and click. Returns the selected index. */
 function runList(items: MenuItem[], idx: number, y: number, rowH: number, halfW: number): number {
   const n = items.length;
   let i = Math.min(idx, n - 1);
@@ -122,9 +187,13 @@ function runList(items: MenuItem[], idx: number, y: number, rowH: number, halfW:
   }
   const row = Math.floor((input.my - y + 2) / rowH);
   const inside = row >= 0 && row < n && Math.abs(input.mx - W / 2) < halfW;
-  if (inside && (input.mx !== lastMx || input.my !== lastMy)) i = row;
+  // with a gamepad, a resting mouse position must not steal the selection
+  if (inside && !input.usingPad && (input.mx !== lastMx || input.my !== lastMy)) i = row;
   lastMx = input.mx;
   lastMy = input.my;
+  const adjust = items[i].adjust;
+  if (adjust && input.hit('ArrowLeft', 'KeyA')) adjust(-1);
+  if (adjust && input.hit('ArrowRight', 'KeyD')) adjust(1);
   if (input.hit('Enter', 'Space') || (input.leftPressed && inside)) {
     game.audio.ui();
     items[inside && input.leftPressed ? row : i].act();
@@ -139,13 +208,15 @@ function drawList(items: MenuItem[], idx: number, y: number, rowH: number, halfW
       ctx.fillStyle = '#39ff88';
       ctx.fillRect(W / 2 - halfW, y + i * rowH - 2, halfW * 2, rowH - 2);
     }
-    drawText(ctx, it.label, W / 2, y + i * rowH, on ? '#02150a' : '#dfe6ee', { align: 'center' });
+    drawText(ctx, it.label, W / 2, y + i * rowH, on ? '#02150a' : it.dim ? '#4a5560' : '#dfe6ee', { align: 'center' });
   });
 }
 
 const MENU_Y = 122;
 const MENU_ROW = 14;
-const OPT_Y = 72;
+const OPT_Y = 62;
+const CTRL_Y = 46;
+const CTRL_ROW = 13;
 
 function renderOptions() {
   if (game.returnTo === 'menu') {
@@ -157,6 +228,61 @@ function renderOptions() {
   }
   drawText(ctx, T().options.title, W / 2, 34, '#f0efe8', { align: 'center', scale: 3 });
   drawList(optionItems(), game.optionsIdx, OPT_Y, 16, 130);
+  drawText(ctx, T().options.adjust, W / 2, H - 22, '#6d8a78', { align: 'center' });
+}
+
+function renderControls() {
+  const c = T().controlsScreen;
+  ctx.fillStyle = game.returnTo === 'menu' ? '#05080c' : 'rgba(2,6,10,.94)';
+  ctx.fillRect(0, 0, W, H);
+  drawText(ctx, c.title, W / 2, 16, '#f0efe8', { align: 'center', scale: 2 });
+  drawList(controlItems(), game.controlsIdx, CTRL_Y, CTRL_ROW, 150);
+  drawText(ctx, game.rebinding ? c.press : c.nav, W / 2, 186, game.rebinding ? '#ffd23d' : '#6d8a78', { align: 'center' });
+  c.gamepad.forEach((l, i) => drawText(ctx, l, W / 2, 210 + i * 11, '#8fa3bf', { align: 'center' }));
+}
+
+/** Controls hint for the device in use. */
+function controlsHint() {
+  if (input.touchActive) return T().touch.hint;
+  if (input.usingPad) return T().pad.hint;
+  return T().menu.controls;
+}
+
+/** On-screen sticks and buttons, only while playing by touch. */
+function renderTouchControls() {
+  const tt = T().touch;
+  const labels: Record<string, string> = { dash: tt.dash, melee: tt.melee, weapon: tt.weapon, terminal: '>_', pause: 'II' };
+  ctx.save();
+  for (const b of TOUCH_BUTTONS) {
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = '#0c1a12';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, 7);
+    ctx.fill();
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = '#39ff88';
+    ctx.stroke();
+    ctx.globalAlpha = 0.85;
+    drawText(ctx, labels[b.id], b.x, b.y - 3, '#a8ffc0', { align: 'center' });
+  }
+  for (const st of [input.moveStick, input.aimStick]) {
+    if (!st) continue;
+    ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = '#dfe6ee';
+    ctx.beginPath();
+    ctx.arc(st.ox, st.oy, 26, 0, 7);
+    ctx.stroke();
+    const dx = st.x - st.ox;
+    const dy = st.y - st.oy;
+    const d = Math.hypot(dx, dy);
+    const k = d > 26 ? 26 / d : 1;
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#dfe6ee';
+    ctx.beginPath();
+    ctx.arc(st.ox + dx * k, st.oy + dy * k, 9, 0, 7);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 let runnerX = 60;
@@ -164,11 +290,11 @@ let runnerX = 60;
 function renderMenu(dt: number) {
   ctx.fillStyle = '#050507';
   ctx.fillRect(0, 0, W, H);
-  // manchas de fundo
+  // background stains
   ctx.fillStyle = '#0d0a0d';
   for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
 
-  // horda ao fundo
+  // horde in the background
   for (const z of parade) {
     z.x += z.speed * dt;
     z.t += dt;
@@ -178,14 +304,14 @@ function renderMenu(dt: number) {
     drawSprite(ctx, SPR.zombies[z.s].walk[fr], z.x, H - 8);
     ctx.globalAlpha = 1;
   }
-  // você, com a skin escolhida, fugindo na frente da horda
+  // you, in the chosen skin, running ahead of the horde
   runnerX += 30 * dt;
   if (runnerX > W + 30) runnerX = -30;
   drawSprite(ctx, skinSprites(game.progress.skin, game.time)[1 + (Math.floor(game.time * 8) % 2)], runnerX, H - 8);
   ctx.fillStyle = '#2a0408';
   ctx.fillRect(0, H - 8, W, 8);
 
-  // título com gotejamento
+  // dripping title
   const title = 'DEAD PIXEL';
   const ty = 34;
   const gl = Math.random() < 0.06 ? rand(-3, 3) : 0;
@@ -203,14 +329,21 @@ function renderMenu(dt: number) {
     ctx.fillStyle = '#e8222a';
     ctx.fillRect(d.x, ty + 28 + Math.floor(d.len), d.w, 2);
   }
-  // o próprio pixel morto, no meio do título
+  // the dead pixel itself, in the middle of the title
   ctx.fillStyle = '#000';
   ctx.fillRect(W / 2 - 1, ty + 12, 3, 3);
 
   drawText(ctx, T().menu.tagline, W / 2, 90, '#8fa3bf', { align: 'center' });
   drawText(ctx, T().menu.best(game.best), W / 2, 103, '#ffd23d', { align: 'center' });
+  if (game.menuPage === 'play') {
+    const items = playItems();
+    drawList(items, game.playIdx, MENU_Y, MENU_ROW, 150);
+    const desc = items[Math.min(game.playIdx, items.length - 1)].desc ?? [];
+    desc.flatMap((l) => wrap(l, 74)).slice(0, 3).forEach((l, i) => drawText(ctx, l, W / 2, 224 + i * 10, i === 0 ? '#aab7c4' : '#ffd23d', { align: 'center' }));
+    return;
+  }
   drawList(menuItems(), game.menuIdx, MENU_Y, MENU_ROW, 150);
-  drawText(ctx, T().menu.controls, W / 2, H - 22, '#6d8a78', { align: 'center' });
+  drawText(ctx, controlsHint(), W / 2, H - 22, '#6d8a78', { align: 'center' });
 }
 
 // ---------- Boot ----------
@@ -235,7 +368,7 @@ function renderBoot() {
   if (n > 9) {
     if (Math.floor(game.time * 2) % 2) drawText(ctx, T().boot.press, W / 2, 190, '#39ff88', { align: 'center' });
     drawText(ctx, T().boot.warning, W / 2, 232, '#3b5245', { align: 'center' });
-    if (matchMedia('(pointer: coarse)').matches) drawText(ctx, T().boot.needsKeyboard, W / 2, 212, '#ffd23d', { align: 'center' });
+    if (matchMedia('(pointer: coarse)').matches) drawText(ctx, T().boot.touch, W / 2, 212, '#ffd23d', { align: 'center' });
   }
   ctx.fillStyle = '#000';
   ctx.fillRect(W / 2, H / 2, 1, 1);
@@ -261,7 +394,7 @@ function crosshair() {
   ctx.fillRect(x, y, 1, 1);
 }
 
-// ---------- Máquina de estados ----------
+// ---------- State machine ----------
 
 function handleInput(dt: number) {
   switch (game.state) {
@@ -271,7 +404,25 @@ function handleInput(dt: number) {
       }
       break;
     case 'menu':
-      game.menuIdx = runList(menuItems(), game.menuIdx, MENU_Y, MENU_ROW, 150);
+      if (game.menuPage === 'play') {
+        if (input.hit('Escape', 'Backspace')) game.menuPage = 'main';
+        else game.playIdx = runList(playItems(), game.playIdx, MENU_Y, MENU_ROW, 150);
+      } else game.menuIdx = runList(menuItems(), game.menuIdx, MENU_Y, MENU_ROW, 150);
+      break;
+    case 'controls':
+      if (game.rebinding) {
+        const code = input.lastCode;
+        if (code === 'Escape') game.rebinding = null;
+        else if (code) {
+          input.rebind(game.rebinding, code);
+          game.rebinding = null;
+          game.saveOptions();
+          game.audio.ui();
+        }
+      } else {
+        game.controlsIdx = runList(controlItems(), game.controlsIdx, CTRL_Y, CTRL_ROW, 150);
+        if (input.hit('Escape') && game.state === 'controls') game.setState('options');
+      }
       break;
     case 'options':
       game.optionsIdx = runList(optionItems(), game.optionsIdx, OPT_Y, 16, 130);
@@ -314,19 +465,26 @@ function handleInput(dt: number) {
         const x = sx + i * (cw + gap);
         if (input.mx >= x && input.mx < x + cw && input.my >= 62 && input.my < 178) hover = i;
       }
-      game.perkHover = hover;
+      // the mouse only changes the selection when it moves, so it does not fight the keyboard and gamepad
+      if (hover >= 0 && !input.usingPad && (input.mx !== lastMx || input.my !== lastMy)) game.perkHover = hover;
+      lastMx = input.mx;
+      lastMy = input.my;
+      const n = game.perkChoices.length;
+      if (input.hit('ArrowRight', 'KeyD')) game.perkHover = (Math.max(0, game.perkHover) + 1) % n;
+      if (input.hit('ArrowLeft', 'KeyA')) game.perkHover = (Math.max(0, game.perkHover) - 1 + n) % n;
       if (game.stateT > 0.3) {
         let choice = -1;
         if (input.hit('Digit1')) choice = 0;
         if (input.hit('Digit2')) choice = 1;
         if (input.hit('Digit3')) choice = 2;
+        if (input.hit('Enter', 'Space') && game.perkHover >= 0) choice = game.perkHover;
         if (input.leftPressed && hover >= 0) choice = hover;
         if (choice >= 0 && game.perkChoices[choice]) game.applyPerk(game.perkChoices[choice]);
       }
       break;
     }
     case 'play':
-      if (input.hit('Escape', 'KeyP') && !game.term.open && !game.term.justClosed) {
+      if (input.actHit('pause') && !game.term.open && !game.term.justClosed) {
         game.pauseIdx = 0;
         game.setState('pause');
         game.audio.setMuffled(true);
@@ -334,15 +492,20 @@ function handleInput(dt: number) {
       break;
     case 'pause':
       game.pauseIdx = runList(pauseItems(), game.pauseIdx, 96, 16, 92);
-      if (input.hit('Escape', 'KeyP') && game.stateT > 0.05 && game.state === 'pause') {
+      if ((input.hit('Escape') || input.actHit('pause')) && game.stateT > 0.05 && game.state === 'pause') {
         game.setState('play');
         game.audio.setMuffled(false);
       }
       break;
-    case 'dead':
-      if (input.hit('KeyR') || (game.stateT > 0.5 && input.hit('Enter'))) game.retry();
-      if (input.hit('KeyM')) game.quitToMenu();
+    case 'dead': {
+      // touch: the bottom line goes to the menu, the copy line copies, anywhere else retries
+      const tapMenu = input.leftPressed && input.my >= 206;
+      const tapCopy = input.leftPressed && game.isArcade() && input.my >= 192 && input.my < 206;
+      if (input.hit('KeyM', 'Escape') || tapMenu) game.quitToMenu();
+      else if (game.isArcade() && (input.hit('KeyC') || tapCopy)) copyResult();
+      else if (input.hit('KeyR') || (game.stateT > 0.5 && (input.hit('Enter') || input.leftPressed))) game.retry();
       break;
+    }
     case 'clear':
       if (game.stateT > 0.4 && (input.hit('Enter', 'Space') || input.leftPressed)) game.nextFromClear();
       break;
@@ -379,9 +542,13 @@ function render(dt: number) {
     case 'options':
       renderOptions();
       break;
+    case 'controls':
+      renderControls();
+      break;
     default:
       renderWorld(game, ctx);
-      renderHud(game, ctx);
+      renderHud(game, ctx, controlsHint());
+      if (game.state === 'play' && input.touchActive && !game.term.open && !game.player.dead) renderTouchControls();
       if (game.state === 'perk') renderPerks(game, ctx);
       else if (game.state === 'intro') renderIntro(game, ctx);
       else if (game.state === 'pause') renderPause(game, ctx, pauseItems().map((i) => i.label));
@@ -397,6 +564,8 @@ let last = performance.now();
 function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  input.uiMode = game.state !== 'play' || game.term.open;
+  input.poll(dt);
   game.update(dt);
   handleInput(dt);
   render(dt);

@@ -1,4 +1,4 @@
-import { rand } from '../core/util';
+import { H, W, rand } from '../core/util';
 import { killNearest, pingAll, rmRf } from './combat';
 import { glitchPixels, ring } from './fx';
 import type { Game } from './game';
@@ -11,7 +11,7 @@ export interface Command {
   run: (g: Game) => string;
 }
 
-// Os comandos são os mesmos em todos os idiomas; só a ajuda e as respostas mudam.
+// Commands are the same in every language; only the help and replies change.
 export const COMMANDS: Command[] = [
   {
     name: 'ping', aliases: ['ping -c 1', 'ping localhost'], cost: 60,
@@ -55,8 +55,14 @@ export const COMMANDS: Command[] = [
   },
 ];
 
+/** Terminal and command list position on screen, shared by drawing and clicks. */
+export const TERM_BOX = { x: 8, w: W - 16, h: 102, y: H - 15 - 102, listX: 8 + 354 + 6, row: 10 };
+export const commandRowY = (i: number) => TERM_BOX.y + 12 + i * TERM_BOX.row;
+
 export class Terminal {
   open = false;
+  /** Highlighted command when the terminal is used with a gamepad. */
+  sel = 0;
   line = '';
   lines: { text: string; color: string }[] = [];
   history: string[] = [];
@@ -148,6 +154,28 @@ export class Terminal {
     if (!this.open) return;
     const g = this.g;
     this.cursorT += dt;
+    const input = g.input;
+    // gamepad: with no keyboard, the command is picked from the list
+    if (input.usingPad) {
+      if (input.hit('ArrowDown')) this.sel = (this.sel + 1) % COMMANDS.length;
+      if (input.hit('ArrowUp')) this.sel = (this.sel - 1 + COMMANDS.length) % COMMANDS.length;
+      if (input.hit('Enter')) this.exec(COMMANDS[this.sel].name);
+      else if (input.hit('Escape')) this.hide();
+      if (input.hit('ArrowDown', 'ArrowUp')) g.audio.key();
+      return;
+    }
+    // mouse and touch: clicking a command runs it, clicking outside closes
+    if (input.leftPressed) {
+      const row = COMMANDS.findIndex((_, i) => input.my >= commandRowY(i) - 1 && input.my < commandRowY(i) + TERM_BOX.row - 1);
+      if (input.mx >= TERM_BOX.listX - 3 && row >= 0) {
+        this.exec(COMMANDS[row].name);
+        return;
+      }
+      if (input.my < TERM_BOX.y) {
+        this.hide();
+        return;
+      }
+    }
     for (const k of g.input.typed) {
       if (k === 'Escape') {
         this.hide();

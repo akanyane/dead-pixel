@@ -6,7 +6,7 @@ import { BLOOD, P, bloodFountain, bloodSpray, dismember, fireBurst, glitchPixels
 import type { Bullet, Enemy, Game, KillerId, Pickup } from './game';
 import { SPR } from './sprites';
 
-// ---------- Armas ----------
+// ---------- Weapons ----------
 
 export function giveWeapon(g: Game, id: WeaponId, equip = true) {
   const p = g.player;
@@ -54,7 +54,7 @@ function fireWeapon(g: Game) {
   const sudo = p.sudoT > 0 ? 2 : 1;
   if (!def.flame) g.addLight(tip.x, tip.y, def.pellets > 1 ? 80 : 54, '#ffcc66');
 
-  // cápsula ejetada
+  // ejected shell casing
   if (!def.flame && !def.rail) {
     const a = p.aim + (p.flip ? 1 : -1) * 1.8 + rand(-0.4, 0.4);
     spawnPart(g, P.Pixel, p.x, p.y - 7, 8, Math.cos(a) * 50, Math.sin(a) * 50, 60, 0.7, '#e0b040');
@@ -124,7 +124,7 @@ function fireRail(g: Game, x: number, y: number, a: number, dmg: number, color: 
   if (g.enemies.length) g.hitstop = Math.max(g.hitstop, 0.025);
 }
 
-// ---------- Dano ----------
+// ---------- Damage ----------
 
 interface HurtOpts {
   force?: number;
@@ -137,11 +137,11 @@ interface HurtOpts {
 export function hurtEnemy(g: Game, e: Enemy, dmg: number, ang: number, o: HurtOpts = {}) {
   if (e.dead || e.spawnT > 0.25) return;
   if (e.kind === 'monolith' && e.state === 0) {
-    dmg *= 0.3; // blindagem até as portas abrirem
+    dmg *= 0.3; // armored until the doors open
     g.hint('armored', T().hints.armored);
   }
   e.hp -= dmg;
-  e.flash = e.boss ? 0.022 : 0.07; // chefe sob fogo contínuo não pode virar silhueta branca
+  e.flash = e.boss ? 0.022 : 0.07; // a boss under constant fire must not turn into a white silhouette
   const force = o.force ?? 40;
   if (!e.boss) {
     const mass = e.kind === 'stack' ? 0.2 : 1;
@@ -157,7 +157,7 @@ export function hurtEnemy(g: Game, e: Enemy, dmg: number, ang: number, o: HurtOp
   if (bloodKind !== 'none') {
     const n = Math.min(14, 3 + Math.floor(dmg / 7));
     bloodSpray(g, e.x, e.y, e.hoff, ang, n, 70 + force, set);
-    bloodSpray(g, e.x, e.y, e.hoff, ang + Math.PI, Math.ceil(n / 3), 40, set); // respingo de entrada
+    bloodSpray(g, e.x, e.y, e.hoff, ang + Math.PI, Math.ceil(n / 3), 40, set); // entry splatter
   }
   if (e.boss) {
     glitchPixels(g, e.x + rand(-e.r, e.r), hy + rand(-e.r, e.r), 2);
@@ -165,7 +165,7 @@ export function hurtEnemy(g: Game, e: Enemy, dmg: number, ang: number, o: HurtOp
   if (o.crit || dmg >= 60) {
     g.addText(e.x + rand(-4, 4), hy - e.r - 2, String(Math.round(dmg)), o.crit ? '#ff2bd6' : '#ffd23d', dmg > 200 ? 2 : 1, 0.6);
   }
-  // perdeu o braço: zumbi continua vindo, espirrando sangue
+  // lost an arm: the zombie keeps coming, spurting blood
   if (!e.wounded && e.hp < e.maxHp * 0.55 && (e.kind === 'walker' || e.kind === 'recruiter')) {
     e.wounded = true;
     spawnGib(g, SPR.gibArm, e.x, e.y, 9, 110, ang, set);
@@ -244,7 +244,7 @@ export function killEnemy(g: Game, e: Enemy, ang: number, force: number, heavy: 
         const t = e.tier - 1;
         for (let i = 0; i < 2; i++) {
           const c = spawnEnemy(g, 'hydra', e.x + (i ? 8 : -8), e.y);
-          setHydraTier(c, t);
+          setHydraTier(g, c, t);
           g.bosses.push(c);
           c.spawnT = 0;
           c.vx = (i ? 1 : -1) * 180;
@@ -269,7 +269,7 @@ export function killEnemy(g: Game, e: Enemy, ang: number, force: number, heavy: 
       }
     }
   } else {
-    // abates grandes dão um mini congelamento: é aqui que o gore "pega"
+    // big kills get a tiny freeze: this is where the gore lands
     if (heavy) g.hitstop = Math.max(g.hitstop, 0.035);
     g.addShake(heavy ? 4 : 1.8);
     if (chance(g.stats.boom) && e.kind !== 'segfault') explosion(g, e.x, e.y - 4, 34, 30, true);
@@ -284,10 +284,10 @@ export function killEnemy(g: Game, e: Enemy, ang: number, force: number, heavy: 
   }
 }
 
-export function setHydraTier(c: Enemy, t: number) {
+export function setHydraTier(g: Game, c: Enemy, t: number) {
   c.tier = t;
   const k = t === 3 ? 1 : t === 2 ? 0.45 : 0.18;
-  c.maxHp = c.hp = ENEMIES.hydra.hp * k;
+  c.maxHp = c.hp = ENEMIES.hydra.hp * k * g.bossHpMul();
   c.r = t === 3 ? 15 : t === 2 ? 10 : 6;
   c.hoff = c.r;
   c.speedMul = t === 3 ? 1 : t === 2 ? 1.35 : 1.8;
@@ -305,7 +305,7 @@ function drops(g: Game, e: Enemy) {
 }
 
 export function addPickup(g: Game, kind: Pickup['kind'], x: number, y: number, weapon?: WeaponId) {
-  // item que cairia dentro de mesa ou parede nasce nos pés do jogador
+  // an item that would land inside a desk or wall spawns at the player's feet
   if (g.map.collides(x, y, 3)) {
     x = g.player.x;
     y = g.player.y;
@@ -318,7 +318,7 @@ export function spawnPickupsForWaveClear(g: Game) {
   addPickup(g, 'hp', p.x + rand(-26, 26), p.y + rand(-22, 22));
   if (p.weapons.length > 1) addPickup(g, 'ammo', p.x + rand(-26, 26), p.y + rand(-22, 22));
   addPickup(g, 'ram', p.x + rand(-26, 26), p.y + rand(-22, 22));
-  if (g.levelIdx === 0 && g.waveIdx === 0) {
+  if (g.isArcade() ? g.arcadeWave === 1 : g.levelIdx === 0 && g.waveIdx === 0) {
     addPickup(g, 'weapon', p.x + 18, p.y, 'smg');
     g.hint('crate', T().hints.crate);
   }
@@ -364,7 +364,7 @@ export function hurtBarrel(g: Game, b: { x: number; y: number; hp: number; flash
   b.flash = 0.08;
   sparks(g, b.x, b.y - 5, 4, '#ffd23d');
   if (b.hp <= 0) {
-    // a explosão fica para o próximo frame para evitar recursão infinita em cadeia
+    // the explosion waits for the next frame to avoid infinite chain recursion
     window.setTimeout(() => {
       if (g.state === 'play') {
         explosion(g, b.x, b.y - 5, 64, 130, true);
@@ -380,6 +380,7 @@ export function hurtBarrel(g: Game, b: { x: number; y: number; hp: number; flash
 export function hurtPlayer(g: Game, dmg: number, srcX: number, srcY: number, by: KillerId) {
   const p = g.player;
   if (g.god || p.dead || p.invuln > 0 || p.dashT > 0 || p.sudoT > 0) return false;
+  dmg *= g.diff().dmg;
   g.lastKiller = by;
   g.tookDamage = true;
   p.hp -= dmg;
@@ -419,6 +420,7 @@ function killPlayer(g: Game) {
   g.saveBest();
   g.progress.deaths++;
   g.saveProgress();
+  g.onPlayerDeath();
   dismember(g, p.x, p.y, rand(6.3), 200, BLOOD.red, true);
   bloodFountain(g, p.x, p.y, 10, 140, BLOOD.red);
   g.glitch = 1;
@@ -428,7 +430,7 @@ function killPlayer(g: Game) {
   g.deathT = 0;
 }
 
-// ---------- Terminal: efeitos ----------
+// ---------- Terminal effects ----------
 
 export function pingAll(g: Game) {
   ring(g, g.player.x, g.player.y - 6, 620, 0.5, '#39ffe5');
@@ -475,7 +477,7 @@ export function rmRf(g: Game) {
   for (const b of g.barrels) if (b.hp > 0 && Math.abs(b.x - p.x) < W * 0.6 && Math.abs(b.y - p.y) < H * 0.6) hurtBarrel(g, b, 99);
 }
 
-// ---------- Update do jogador e projéteis ----------
+// ---------- Player and projectile update ----------
 
 export function rebuildHash(g: Game) {
   const h = g.hash;
@@ -593,7 +595,11 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
 
   rebuildHash(g);
 
-  // mira
+  // aim: with a gamepad or touch, the aim point sits at a fixed distance from the player
+  if (i.aimDir !== null && !p.dead) {
+    i.mx = clamp(p.x - g.camX + Math.cos(i.aimDir) * 64, 0, W);
+    i.my = clamp(p.y - 7 - g.camY + Math.sin(i.aimDir) * 64, 0, H);
+  }
   const wx = g.camX + i.mx;
   const wy = g.camY + i.my;
   if (!p.dead) {
@@ -601,26 +607,17 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     p.flip = wx < p.x;
   }
 
-  // movimento
+  // movement
   let mx = 0;
   let my = 0;
-  if (inputOn) {
-    if (i.held('KeyA', 'ArrowLeft')) mx--;
-    if (i.held('KeyD', 'ArrowRight')) mx++;
-    if (i.held('KeyW', 'ArrowUp')) my--;
-    if (i.held('KeyS', 'ArrowDown')) my++;
-  }
+  if (inputOn) [mx, my] = i.moveVec();
   const len = Math.hypot(mx, my);
-  if (len) {
-    mx /= len;
-    my /= len;
-  }
   p.moving = len > 0;
 
   p.dashCd = Math.max(0, p.dashCd - dt);
-  if (inputOn && p.dashCd <= 0 && i.hit('Space', 'ShiftLeft', 'ShiftRight')) {
-    const dx = len ? mx : Math.cos(p.aim);
-    const dy = len ? my : Math.sin(p.aim);
+  if (inputOn && p.dashCd <= 0 && i.actHit('dash')) {
+    const dx = len ? mx / len : Math.cos(p.aim);
+    const dy = len ? my / len : Math.sin(p.aim);
     p.dashT = 0.17;
     p.dashCd = 1.15 * s.dashCd;
     p.dashX = dx;
@@ -673,7 +670,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
   p.meleeT = Math.max(0, p.meleeT - dt);
 
   if (inputOn) {
-    // troca de arma
+    // weapon switch
     for (let n = 0; n < WEAPON_ORDER.length; n++) {
       if (i.hit('Digit' + (n + 1))) {
         const id = WEAPON_ORDER[n];
@@ -689,14 +686,14 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
       p.weapon = owned[(idx + i.wheel + owned.length) % owned.length];
       g.audio.ui();
     }
-    if (i.left && p.cd <= 0) fireWeapon(g);
-    if ((i.rightPressed || i.hit('KeyF')) && p.meleeCd <= 0) meleeSwing(g);
+    if (i.firing() && p.cd <= 0) fireWeapon(g);
+    if ((i.rightPressed || i.actHit('melee')) && p.meleeCd <= 0) meleeSwing(g);
   }
 
   // terminal
-  if (!p.dead && !g.term.open && !g.term.justClosed && i.hit('KeyQ', 'Enter')) g.term.show();
+  if (!p.dead && !g.term.open && !g.term.justClosed && i.actHit('terminal')) g.term.show();
 
-  // orbitais (cron job)
+  // orbitals (cron job)
   if (s.orbit > 0) {
     p.orbitA += dt * 4.6;
     for (let k = 0; k < s.orbit; k++) {
@@ -713,7 +710,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     }
   }
 
-  // aliados (fork)
+  // allies (fork)
   for (let k = g.allies.length - 1; k >= 0; k--) {
     const al = g.allies[k];
     al.life -= dt;
@@ -752,7 +749,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     }
   }
 
-  // balas
+  // bullets
   for (let k = g.bullets.length - 1; k >= 0; k--) {
     if (!updateBullet(g, g.bullets[k], dt)) {
       g.bullets[k] = g.bullets[g.bullets.length - 1];
@@ -760,7 +757,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     }
   }
 
-  // balas inimigas
+  // enemy bullets
   const phx = p.x;
   const phy = p.y - 7;
   for (let k = g.ebullets.length - 1; k >= 0; k--) {
@@ -785,7 +782,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     }
   }
 
-  // itens
+  // pickups
   const magR = 34 * s.magnet;
   for (let k = g.pickups.length - 1; k >= 0; k--) {
     const pk = g.pickups[k];
@@ -808,7 +805,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     }
   }
 
-  // barris / resíduos
+  // barrels and residue
   for (const b of g.barrels) b.flash = Math.max(0, b.flash - dt);
   g.barrels = g.barrels.filter((b) => b.hp > 0);
   for (let k = g.puddles.length - 1; k >= 0; k--) {
@@ -826,7 +823,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     if (g.bolts[k].life <= 0) g.bolts.splice(k, 1);
   }
 
-  // feixes
+  // beams
   for (let k = g.beams.length - 1; k >= 0; k--) {
     const b = g.beams[k];
     if (b.warn > 0) {
@@ -844,7 +841,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     }
   }
 
-  // faixas de deploy e tiles corrompidos
+  // deploy strips and corrupted tiles
   for (let k = g.hazards.length - 1; k >= 0; k--) {
     const h = g.hazards[k];
     if (h.warn > 0) {
@@ -853,7 +850,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
         g.addShake(5);
         if (h.style === 'deploy') {
           g.audio.explosion(false);
-          // deploy queima o que estiver no caminho, inclusive zumbis
+          // the deploy burns whatever is in the way, zombies included
           for (const e of [...g.enemies]) {
             if (!e.boss && e.x > h.x && e.x < h.x + h.w && e.y > h.y && e.y < h.y + h.h) hurtEnemy(g, e, 400, 0, { force: 60, gib: true, quiet: true, burn: 2 });
           }
@@ -875,13 +872,13 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     }
   }
 
-  // morte do jogador: sequência final
+  // player death: final sequence
   if (p.dead) {
     g.deathT += rawDt;
     if (g.deathT > 1.5 && g.state === 'play') g.setState('dead');
   }
 
-  // câmera
+  // camera
   const lookX = clamp(i.mx - W / 2, -W / 2, W / 2) * 0.22;
   const lookY = clamp(i.my - H / 2, -H / 2, H / 2) * 0.22;
   const tx = p.x - W / 2 + lookX;
@@ -889,7 +886,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
   const camK = clamp(rawDt * 7, 0, 1);
   g.camX = lerp(g.camX, tx, camK);
   g.camY = lerp(g.camY, ty, camK);
-  // folga nas bordas do mapa para o jogador nunca ficar atrás do HUD
+  // margin at the map edges so the player is never hidden behind the HUD
   g.camX = clamp(g.camX, -14, Math.max(-14, g.map.pxW - W + 14));
   g.camY = clamp(g.camY, -38, Math.max(-38, g.map.pxH - H + 22));
   g.kickX = lerp(g.kickX, 0, clamp(rawDt * 12, 0, 1));

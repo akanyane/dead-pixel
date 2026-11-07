@@ -47,7 +47,7 @@ const coneTex = (() => {
 export function drawEnemy(g: Game, ctx: CanvasRenderingContext2D, e: Enemy) {
   const flash = e.flash > 0;
   if (e.spawnT > 0.05) {
-    // materializando: chuvisco antes de virar corpo
+    // materializing: static before it becomes a body
     for (let i = 0; i < 12; i++) {
       ctx.fillStyle = pick(['#ff004c', '#00e5ff', '#39ff88', '#fff']);
       ctx.fillRect(e.x + rand(-6, 6), e.y - rand(0, 14), 2, 1);
@@ -94,7 +94,8 @@ export function drawEnemy(g: Game, ctx: CanvasRenderingContext2D, e: Enemy) {
     case 'segfault':
       drawSprite(ctx, SPR.segfault[fr], e.x, e.y, e.flip, flash);
       if (e.state === 1) {
-        ctx.strokeStyle = Math.sin(e.t * 40) > 0 ? '#ffec3d' : '#ff2a2a';
+        // high contrast: white and black instead of yellow and red
+        ctx.strokeStyle = Math.sin(e.t * 40) > 0 ? (g.highContrast ? '#ffffff' : '#ffec3d') : g.highContrast ? '#000000' : '#ff2a2a';
         ctx.beginPath();
         ctx.arc(Math.round(e.x), Math.round(e.y - 6), 18 + Math.sin(e.t * 30) * 3, 0, 7);
         ctx.stroke();
@@ -114,8 +115,9 @@ export function drawEnemy(g: Game, ctx: CanvasRenderingContext2D, e: Enemy) {
       }
       drawSprite(ctx, SPR.scrum[e.state === 2 ? Math.floor(g.time * 18) % 2 : fr], e.x + shakeX, e.y, e.flip, flash, 3);
       if (e.state === 1) {
-        // telegrafa a direção da corrida
-        ctx.strokeStyle = '#ff2a2a';
+        // telegraphs the charge direction
+        if (g.highContrast) hcLine(ctx, e.x, e.y - 10, e.x + Math.cos(e.a) * 400, e.y - 10 + Math.sin(e.a) * 400);
+        ctx.strokeStyle = g.highContrast ? '#ffffff' : '#ff2a2a';
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.moveTo(e.x, e.y - 10);
@@ -158,7 +160,7 @@ function drawKernel(g: Game, ctx: CanvasRenderingContext2D, e: Enemy, flash: boo
   ctx.fillRect(cx - s + 2, cy - s + 2, s * 2 - 4, s * 2 - 4);
   ctx.fillStyle = '#10309f';
   ctx.fillRect(cx - 14, cy - 14, 28, 28);
-  // um olho, com o pixel morto no centro
+  // one eye, with the dead pixel in the center
   ctx.fillStyle = '#dfe6ee';
   ctx.fillRect(cx - 9, cy - 5, 18, 8);
   ctx.fillRect(cx - 6, cy - 7, 12, 12);
@@ -222,17 +224,17 @@ function drawMonolith(g: Game, ctx: CanvasRenderingContext2D, e: Enemy, flash: b
   ctx.fillStyle = '#c9b458';
   ctx.fillRect(x, y, w, 2);
   const open = e.state === 1 ? 1 : e.state === 2 ? 1 - Math.max(0, e.stateT) / 1.1 : 0;
-  // núcleo atrás das portas
+  // core behind the doors
   ctx.fillStyle = '#ff2a2a';
   ctx.fillRect(x + 22, y + 26, 28, 38);
   ctx.fillStyle = Math.sin(g.time * 12) > 0 ? '#ffec3d' : '#ff8a1a';
   ctx.fillRect(x + 30, y + 34, 12, 22);
-  // portas
+  // doors
   const dw = 16 * (1 - open);
   ctx.fillStyle = '#4b515e';
   ctx.fillRect(x + 20, y + 24, Math.ceil(dw), 42);
   ctx.fillRect(x + 52 - Math.ceil(dw), y + 24, Math.ceil(dw), 42);
-  // fósforo verde rolando
+  // scrolling green phosphor
   ctx.fillStyle = '#04140a';
   ctx.fillRect(x + 8, y + 6, w - 16, 15);
   const scroll = Math.floor(g.time * 6);
@@ -250,7 +252,7 @@ function drawPixelBoss(g: Game, ctx: CanvasRenderingContext2D, e: Enemy, flash: 
   const r = Math.max(1, e.state === 1 ? 2 : Math.round(e.r));
   const x = Math.round(e.x);
   const y = Math.round(e.y);
-  // o ponto é minúsculo: anéis para achá-lo
+  // the dot is tiny: rings help find it
   if (e.state === 1) {
     ctx.strokeStyle = '#0a0a0c';
     ctx.globalAlpha = 0.3 + Math.sin(g.time * 8) * 0.2;
@@ -286,7 +288,7 @@ function drawPlayer(g: Game, ctx: CanvasRenderingContext2D) {
   const fr = p.moving ? 1 + (Math.floor(p.walk) % 2) : 0;
   const px = p.x;
   const py = p.y;
-  // arma por trás quando mira para cima
+  // weapon behind the body when aiming up
   const behind = Math.sin(p.aim) < -0.35;
   if (behind) drawGun(g, ctx);
   if (p.dashT > 0) {
@@ -346,7 +348,7 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
   ctx.translate(-ox, -oy);
   ctx.drawImage(m.floor, 0, 0);
 
-  // LEDs dos racks
+  // rack LEDs
   for (const l of m.leds) {
     if (l.x < ox || l.x > ox + W || l.y < oy || l.y > oy + H) continue;
     if (Math.sin(g.time * l.speed + l.phase) > -0.2) {
@@ -355,7 +357,7 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
     }
   }
 
-  // poças
+  // puddles
   for (const pd of g.puddles) {
     ctx.fillStyle = 'rgba(138,62,235,.35)';
     ctx.beginPath();
@@ -363,14 +365,15 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
     ctx.fill();
   }
 
-  // faixas de perigo
+  // hazard strips
   for (const h of g.hazards) {
     if (h.style === 'deploy') {
       if (h.warn > 0) {
         const on = Math.floor(g.time * 12) % 2 === 0;
         ctx.fillStyle = on ? 'rgba(255,42,42,.30)' : 'rgba(255,42,42,.12)';
         ctx.fillRect(h.x, h.y, h.w, h.h);
-        ctx.strokeStyle = '#ff2a2a';
+        if (g.highContrast) hatch(ctx, h.x, h.y, h.w, h.h, g.time);
+        ctx.strokeStyle = g.highContrast ? '#ffffff' : '#ff2a2a';
         ctx.strokeRect(h.x + 0.5, h.y + 0.5, h.w - 1, h.h - 1);
         if (on) drawText(ctx, 'DEPLOY', g.camX + W / 2, Math.max(h.y + 4, g.camY + 24), '#ff2a2a', { align: 'center' });
       } else {
@@ -381,8 +384,9 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
       }
     } else {
       if (h.warn > 0) {
-        ctx.strokeStyle = Math.floor(g.time * 14) % 2 ? '#000' : '#ff004c';
+        ctx.strokeStyle = Math.floor(g.time * 14) % 2 ? '#000' : g.highContrast ? '#ffffff' : '#ff004c';
         ctx.strokeRect(h.x + 0.5, h.y + 0.5, h.w - 1, h.h - 1);
+        if (g.highContrast) hatch(ctx, h.x, h.y, h.w, h.h, g.time);
       } else {
         const fade = h.life < 1 ? h.life : 1;
         ctx.globalAlpha = fade;
@@ -397,11 +401,12 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
     }
   }
 
-  // Alerta dos feixes
+  // Beam warnings
   for (const b of g.beams) {
     if (b.warn > 0) {
-      ctx.strokeStyle = b.color;
-      ctx.globalAlpha = 0.45 + Math.sin(g.time * 30) * 0.3;
+      if (g.highContrast) hcLine(ctx, b.x, b.y, b.x + Math.cos(b.a) * b.len, b.y + Math.sin(b.a) * b.len);
+      ctx.strokeStyle = g.highContrast ? '#ffffff' : b.color;
+      ctx.globalAlpha = g.highContrast ? 1 : 0.45 + Math.sin(g.time * 30) * 0.3;
       ctx.setLineDash([5, 4]);
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
@@ -412,7 +417,7 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
     }
   }
 
-  // ordena por Y
+  // sort by Y
   const list: Drawable[] = [];
   const onScreen = (x: number, y: number, pad = 40) => x > ox - pad && x < ox + W + pad && y > oy - pad && y < oy + H + pad;
   for (const b of g.barrels) {
@@ -460,7 +465,7 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
   list.sort((a, b) => a.y - b.y);
   for (const d of list) d.draw();
 
-  // Partículas
+  // Particles
   for (const p of g.parts) {
     const k = p.life / p.max;
     switch (p.kind) {
@@ -505,13 +510,13 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
   }
   ctx.restore();
 
-  // Luz
+  // Light
   renderLights(g, ctx, ox, oy);
 
-  // Tudo que brilha fica por cima da escuridão, para ser sempre legível
+  // Everything that glows goes on top of the darkness, so it is always readable
   ctx.save();
   ctx.translate(-ox, -oy);
-  // olhos vermelhos enxergam-se antes do corpo no escuro
+  // red eyes show up before the body in the dark
   if (m.theme !== 'void') {
     const blink = (e: Enemy) => Math.sin(e.t * 1.7 + e.skin) > -0.93;
     for (const e of g.enemies) {
@@ -573,7 +578,7 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
   }
   ctx.globalAlpha = 1;
   for (const t of g.bolts) {
-    // raios irregulares
+    // jagged lightning
     ctx.strokeStyle = Math.random() < 0.5 ? '#fff' : t.color;
     ctx.beginPath();
     ctx.moveTo(t.ax, t.ay);
@@ -605,13 +610,20 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
   for (const b of g.ebullets) {
     const pulse = Math.sin(g.time * 18 + b.x) > 0;
     const R = b.r;
+    if (g.highContrast) {
+      // fixed black outline and white ring: the shot stands out on any floor without relying on color
+      ctx.fillStyle = '#000';
+      ctx.fillRect(Math.round(b.x - R - 2), Math.round(b.y - R - 2), R * 2 + 4, R * 2 + 4);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(Math.round(b.x - R - 1), Math.round(b.y - R - 1), R * 2 + 2, R * 2 + 2);
+    }
     ctx.fillStyle = pulse ? '#ffffff' : b.color;
     ctx.fillRect(Math.round(b.x - R), Math.round(b.y - R), R * 2, R * 2);
     ctx.fillStyle = b.color;
     ctx.fillRect(Math.round(b.x - R + 1), Math.round(b.y - R + 1), R * 2 - 2, R * 2 - 2);
     if (b.text) drawText(ctx, b.text, b.x, b.y - R - 8, b.color, { align: 'center' });
   }
-  // órbita
+  // orbit
   if (g.stats.orbit > 0 && !g.player.dead) {
     for (let k = 0; k < g.stats.orbit; k++) {
       const a = g.player.orbitA + (k * Math.PI * 2) / g.stats.orbit;
@@ -621,7 +633,7 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
       ctx.fillRect(Math.round(g.player.x + Math.cos(a) * 26) - 1, Math.round(g.player.y - 6 + Math.sin(a) * 26) - 1, 2, 2);
     }
   }
-  // Texto flutuante
+  // Floating text
   for (const t of g.texts) {
     drawText(ctx, t.str, t.x, t.y, t.color, { scale: t.scale, align: 'center', shadow: '#000', alpha: Math.min(1, t.life * 3) });
   }
@@ -667,3 +679,39 @@ function renderLights(g: Game, ctx: CanvasRenderingContext2D, ox: number, oy: nu
   ctx.restore();
 }
 
+
+/** Wide black line under a warning, so it shows on any floor. */
+function hcLine(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number) {
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+/** Black and white diagonal stripes: a danger zone recognizable without relying on red. */
+function hatch(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, time: number) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  const shift = Math.floor(time * 20) % 12;
+  ctx.lineWidth = 3;
+  for (let d = -h - 12 + shift; d < w + 12; d += 12) {
+    ctx.strokeStyle = '#000';
+    ctx.beginPath();
+    ctx.moveTo(x + d, y + h);
+    ctx.lineTo(x + d + h, y);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + d + 3, y + h);
+    ctx.lineTo(x + d + 3 + h, y);
+    ctx.stroke();
+    ctx.lineWidth = 3;
+  }
+  ctx.restore();
+}
