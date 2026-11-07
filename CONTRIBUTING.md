@@ -20,13 +20,15 @@ __g.beginPlay();       // skip the story screen
 __g.player.ram = 512;  // full RAM to test the terminal
 ```
 
-Before opening a PR, run the build, which also runs the typecheck:
+Before opening a PR, run the build (which also runs the typecheck) and the smoke tests:
 
 ```bash
 npm run build
+npx playwright install chromium   # once
+npm test
 ```
 
-The project has no automated tests yet, so play the part you changed.
+CI runs the same checks on every pull request. The tests only cover the basics, so also play the part you changed.
 
 ## Commit messages
 
@@ -56,6 +58,9 @@ fix: stop items from spawning inside walls
 | Add an achievement | `src/game/achievements.ts`, plus its text in `src/game/i18n.ts` |
 | Change or translate text | `src/game/i18n.ts` |
 | Add a terminal command | `src/game/terminal.ts` |
+| Change difficulty or arcade tuning | `DIFFICULTY` and `ARCADE_*` in `src/game/data.ts` |
+| Change controls, gamepad or touch | `src/core/input.ts` |
+| Add a smoke test | `tests/smoke.spec.ts` |
 | Change enemy and boss AI | `src/game/enemies.ts` |
 | Change damage, projectiles and controls | `src/game/combat.ts` |
 | Work on gore and particles | `src/game/fx.ts` |
