@@ -86,6 +86,8 @@ export class Input {
   touchActive = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   moveStick: Stick | null = null;
   aimStick: Stick | null = null;
+  /** When the last touch event happened, to tell real mouse clicks from the ones browsers emulate after a tap. */
+  private lastTouch = -Infinity;
   private touchButtons = new Set<string>();
 
   /** Aim direction from the gamepad or touch; null when aiming with the mouse. */
@@ -119,8 +121,8 @@ export class Input {
       this.track(e);
     });
     window.addEventListener('mousedown', (e) => {
-      // mobile browsers emulate mouse events after a touch: ignore them
-      if (this.touchActive) return;
+      // mobile browsers emulate a mouse click right after a tap: ignore those, but keep real mice working
+      if (performance.now() - this.lastTouch < 800) return;
       this.gesture();
       this.usingPad = false;
       this.track(e);
@@ -171,8 +173,15 @@ export class Input {
     this.gesture();
     this.touchActive = true;
     this.usingPad = false;
+    this.lastTouch = performance.now();
     for (const t of Array.from(e.changedTouches)) {
       const p = this.toScreen(t.clientX, t.clientY);
+      // a finger can go down on one screen and come up on another (tapping a patch drops you
+      // straight into play), so releases are handled the same way in every mode
+      if (kind === 'end') {
+        if (this.moveStick?.id === t.identifier) this.moveStick = null;
+        if (this.aimStick?.id === t.identifier) this.aimStick = null;
+      }
       if (this.uiMode) {
         // in menus, a tap is a click
         this.mx = p.x;
@@ -200,12 +209,9 @@ export class Input {
             s.y = p.y;
           }
         }
-        if (kind === 'end') {
-          if (this.moveStick?.id === t.identifier) this.moveStick = null;
-          if (this.aimStick?.id === t.identifier) this.aimStick = null;
-        }
       }
     }
+    if (kind === 'end' && e.touches.length === 0) this.left = false;
     if (this.aimStick) {
       const dx = this.aimStick.x - this.aimStick.ox;
       const dy = this.aimStick.y - this.aimStick.oy;
@@ -216,6 +222,9 @@ export class Input {
   /** Reads the gamepad. Called once per frame, before the game update. */
   poll(dt: number) {
     this.padPressed.clear();
+    // sticks only live during play: a menu opening under a held finger drops them,
+    // so the player does not keep walking or shooting after the menu closes
+    if (this.uiMode) this.moveStick = this.aimStick = null;
     const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
     const pad = Array.from(pads).find((p) => p && p.connected);
     if (!pad) {
