@@ -1,5 +1,5 @@
 import { H, TILE, W, angleTo, chance, clamp, dist, distToSegment, lerp, pick, rand, randInt } from '../core/util';
-import { ENEMIES, SKINS, WEAPONS, WEAPON_ORDER, type WeaponId } from './data';
+import { ENEMIES, PLAYER_SPEED, SKINS, WEAPONS, WEAPON_ORDER, type WeaponId } from './data';
 import { T } from './i18n';
 import { spawnEnemy } from './enemies';
 import { BLOOD, P, bloodFountain, bloodSpray, dismember, fireBurst, glitchPixels, ring, smokeBurst, sparks, spawnGib, spawnPart, splat } from './fx';
@@ -626,7 +626,7 @@ export function updateCombat(g: Game, dt: number, rawDt: number) {
     glitchPixels(g, p.x, p.y - 6, 10, 50);
   }
 
-  let speed = 96 * s.speed * (p.overclockT > 0 ? 1.3 : 1);
+  let speed = PLAYER_SPEED * s.speed * (p.overclockT > 0 ? 1.3 : 1);
   for (const pd of g.puddles) if (dist(pd.x, pd.y, p.x, p.y) < pd.r) speed *= 0.55;
   if (p.dashT > 0) {
     p.dashT -= dt;

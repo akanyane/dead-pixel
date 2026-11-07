@@ -1,6 +1,6 @@
 import { TILE, angleTo, chance, clamp, dist, pick, rand } from '../core/util';
 import { explosion, forNear, hurtEnemy, hurtPlayer, killEnemy, setHydraTier } from './combat';
-import { ENEMIES, type EnemyKind } from './data';
+import { BUG_SPEED_CAP, ENEMIES, PLAYER_SPEED, type EnemyKind } from './data';
 import { T } from './i18n';
 import { BLOOD, P, bloodFountain, bloodSpray, glitchPixels, ring, spawnPart, splat } from './fx';
 import type { Enemy, Game } from './game';
@@ -412,7 +412,9 @@ export function updateEnemies(g: Game, dt: number) {
         continue;
       }
     }
-    const speed = e.def.speed * e.speedMul * (e.wounded ? 0.8 : 1) * g.enemySpeedScale();
+    let speed = e.def.speed * e.speedMul * (e.wounded ? 0.8 : 1) * g.enemySpeedScale();
+    // the random speed roll and the level scaling used to push some bugs past the player
+    if (e.kind === 'bug') speed = Math.min(speed, PLAYER_SPEED * g.stats.speed * BUG_SPEED_CAP);
 
     switch (e.kind) {
       case 'walker':
@@ -518,6 +520,13 @@ export function updateEnemies(g: Game, dt: number) {
     if (e.atkCd <= 0 && !(e.kind === 'nullp' && e.state === 1) && e.kind !== 'segfault' && dist(e.x, e.y - e.hoff, p.x, p.y - 7) < e.r + 6) {
       e.atkCd = 0.7;
       const landed = hurtPlayer(g, e.def.dmg, e.x, e.y, e.kind);
+      // bugs bite, bounce off and hesitate for a moment instead of staying glued to the player
+      if (e.kind === 'bug') {
+        const away = angleTo(p.x, p.y, e.x, e.y);
+        e.vx += Math.cos(away) * 200;
+        e.vy += Math.sin(away) * 200;
+        e.stun = Math.max(e.stun, 0.3);
+      }
       if (landed && g.stats.thorns > 0) {
         hurtEnemy(g, e, 40 * g.stats.thorns, angleTo(p.x, p.y, e.x, e.y), { force: 120, gib: true });
       }
