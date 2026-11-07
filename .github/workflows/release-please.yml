@@ -1,0 +1,54 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+# Cada job pede só o que precisa.
+permissions: {}
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # Abre ou atualiza o PR de release a partir dos Conventional Commits.
+      # Quando esse PR é mergeado, cria a tag e a GitHub Release.
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Só roda quando uma release acabou de nascer: anexa o jogo já compilado.
+  upload-build:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG_NAME }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Empacotar o build
+        run: (cd dist && zip -r "../dead-pixel-${TAG_NAME}.zip" .)
+      - name: Anexar à release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG_NAME" "dead-pixel-${TAG_NAME}.zip" --clobber
