@@ -342,7 +342,9 @@ export class Game {
 
   goreLevel = 1.2;
   crtOn = true;
-  musicOn = true;
+  /** Volumes em passos de 0 a 10. */
+  musicVol = 7;
+  sfxVol = 10;
   tipsOn = true;
   god = false;
 
@@ -380,12 +382,15 @@ export class Game {
       }
     }
     try {
-      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean; tips?: boolean; lang?: Lang };
+      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean; musicVol?: number; sfxVol?: number; tips?: boolean; lang?: Lang };
       if (o.tips !== undefined) this.tipsOn = o.tips;
       setLang(o.lang && LANGS.includes(o.lang) ? o.lang : detectLang());
       if (o.gore !== undefined) this.goreLevel = o.gore;
       if (o.crt !== undefined) this.crtOn = o.crt;
-      if (o.music !== undefined) this.musicOn = o.music;
+      // saves antigos só tinham música ligada ou desligada
+      if (o.music === false) this.musicVol = 0;
+      if (o.musicVol !== undefined) this.musicVol = clamp(Math.round(o.musicVol), 0, 10);
+      if (o.sfxVol !== undefined) this.sfxVol = clamp(Math.round(o.sfxVol), 0, 10);
     } catch {
       setLang(detectLang());
     }
@@ -396,15 +401,15 @@ export class Game {
     }
     // quem já jogou recebe o que já cumpriu, sem uma chuva de avisos
     this.checkAchievements(true);
-    this.audio.musicOn = this.musicOn;
+    this.audio.setVolumes(this.musicVol / 10, this.sfxVol / 10);
     this.map = buildMap('office');
     this.wet = new Uint8Array(this.map.w * this.map.h);
     this.player = this.newPlayer();
   }
 
   saveOptions() {
-    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, music: this.musicOn, tips: this.tipsOn, lang: getLang() }));
-    this.audio.musicOn = this.musicOn;
+    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, musicVol: this.musicVol, sfxVol: this.sfxVol, tips: this.tipsOn, lang: getLang() }));
+    this.audio.setVolumes(this.musicVol / 10, this.sfxVol / 10);
   }
 
   private newPlayer(): Player {

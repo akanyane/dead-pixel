@@ -47,7 +47,21 @@ export class Sound {
   private nextTime = 0;
   private timer = 0;
   muted = false;
-  musicOn = true;
+  /** Volumes de 0 a 1, ajustados nas opções. Música em 0 também para o sequenciador. */
+  musicVol = 0.7;
+  sfxVol = 1;
+
+  get musicOn() {
+    return this.musicVol > 0;
+  }
+
+  setVolumes(music: number, sfx: number) {
+    this.musicVol = music;
+    this.sfxVol = sfx;
+    if (!this.ctx) return;
+    this.music.gain.setTargetAtTime(0.47 * music, this.ctx.currentTime, 0.03);
+    this.sfx.gain.setTargetAtTime(0.9 * sfx, this.ctx.currentTime, 0.03);
+  }
 
   init() {
     if (this.ctx) {
@@ -65,10 +79,10 @@ export class Sound {
     comp.ratio.value = 6;
     this.master.connect(comp).connect(ctx.destination);
     this.sfx = ctx.createGain();
-    this.sfx.gain.value = 0.9;
+    this.sfx.gain.value = 0.9 * this.sfxVol;
     this.sfx.connect(this.master);
     this.music = ctx.createGain();
-    this.music.gain.value = 0.33;
+    this.music.gain.value = 0.47 * this.musicVol;
     this.musicFilter = ctx.createBiquadFilter();
     this.musicFilter.type = 'lowpass';
     this.musicFilter.frequency.value = 18000;

@@ -33,7 +33,8 @@ if (import.meta.env.DEV) {
 const drips = Array.from({ length: 34 }, () => ({ x: Math.floor(rand(92, 388)), len: rand(0, 18), speed: rand(1, 8), w: Math.random() < 0.3 ? 2 : 1 }));
 const parade = Array.from({ length: 9 }, (_, i) => ({ x: rand(-40, W + 40), s: i % 4, speed: rand(8, 20), t: rand(5) }));
 
-type MenuItem = { label: string; act: () => void };
+/** `adjust` deixa a linha responder às setas para os lados, como nos volumes. */
+type MenuItem = { label: string; act: () => void; adjust?: (d: number) => void };
 
 function goreName() {
   const l = T().options.goreLevels;
@@ -51,6 +52,15 @@ function cycleLang() {
 }
 
 const onOff = (v: boolean) => (v ? T().options.on : T().options.off);
+
+/** Barrinha de volume em texto, com a fonte do jogo. */
+const volBar = (v: number) => `${'|'.repeat(v)}${'.'.repeat(10 - v)} ${v * 10}%`;
+
+function setVolume(kind: 'musicVol' | 'sfxVol', v: number) {
+  game[kind] = Math.max(0, Math.min(10, v));
+  game.saveOptions();
+  if (kind === 'sfxVol') game.audio.ui();
+}
 
 function openManual(from: 'menu' | 'pause') {
   game.returnTo = from;
@@ -86,7 +96,8 @@ function optionItems(): MenuItem[] {
   const o = T().options;
   return [
     { label: `${o.gore}: ${goreName()}`, act: cycleGore },
-    { label: `${o.music}: ${onOff(game.musicOn)}`, act: () => { game.musicOn = !game.musicOn; game.saveOptions(); } },
+    { label: `${o.music}: ${volBar(game.musicVol)}`, act: () => setVolume('musicVol', (game.musicVol + 1) % 11), adjust: (d) => setVolume('musicVol', game.musicVol + d) },
+    { label: `${o.sfx}: ${volBar(game.sfxVol)}`, act: () => setVolume('sfxVol', (game.sfxVol + 1) % 11), adjust: (d) => setVolume('sfxVol', game.sfxVol + d) },
     { label: `${o.crt}: ${onOff(game.crtOn)}`, act: () => { game.crtOn = !game.crtOn; presenter.crtEnabled = game.crtOn; game.saveOptions(); } },
     { label: `${o.tips}: ${onOff(game.tipsOn)}`, act: () => { game.tipsOn = !game.tipsOn; game.saveOptions(); } },
     { label: langLabel(), act: cycleLang },
@@ -125,6 +136,9 @@ function runList(items: MenuItem[], idx: number, y: number, rowH: number, halfW:
   if (inside && (input.mx !== lastMx || input.my !== lastMy)) i = row;
   lastMx = input.mx;
   lastMy = input.my;
+  const adjust = items[i].adjust;
+  if (adjust && input.hit('ArrowLeft', 'KeyA')) adjust(-1);
+  if (adjust && input.hit('ArrowRight', 'KeyD')) adjust(1);
   if (input.hit('Enter', 'Space') || (input.leftPressed && inside)) {
     game.audio.ui();
     items[inside && input.leftPressed ? row : i].act();
@@ -157,6 +171,7 @@ function renderOptions() {
   }
   drawText(ctx, T().options.title, W / 2, 34, '#f0efe8', { align: 'center', scale: 3 });
   drawList(optionItems(), game.optionsIdx, OPT_Y, 16, 130);
+  drawText(ctx, T().options.adjust, W / 2, H - 22, '#6d8a78', { align: 'center' });
 }
 
 let runnerX = 60;

@@ -46,6 +46,8 @@ interface Strings {
     gore: string;
     goreLevels: { max: string; normal: string; low: string };
     music: string;
+    sfx: string;
+    adjust: string;
     crt: string;
     tips: string;
     on: string;
@@ -207,6 +209,8 @@ const pt: Strings = {
     gore: 'GORE',
     goreLevels: { max: 'MÁXIMO', normal: 'NORMAL', low: 'CONTIDO' },
     music: 'MÚSICA',
+    sfx: 'EFEITOS',
+    adjust: 'setas para os lados ajustam o volume',
     crt: 'EFEITO CRT',
     tips: 'DICAS E CARTÕES',
     on: 'LIGADO',
@@ -561,6 +565,8 @@ const en: Strings = {
     gore: 'GORE',
     goreLevels: { max: 'MAXIMUM', normal: 'NORMAL', low: 'MILD' },
     music: 'MUSIC',
+    sfx: 'SOUND EFFECTS',
+    adjust: 'left and right arrows adjust the volume',
     crt: 'CRT EFFECT',
     tips: 'TIPS AND CARDS',
     on: 'ON',
@@ -915,6 +921,8 @@ const es: Strings = {
     gore: 'GORE',
     goreLevels: { max: 'MÁXIMO', normal: 'NORMAL', low: 'MODERADO' },
     music: 'MÚSICA',
+    sfx: 'EFECTOS',
+    adjust: 'las flechas laterales ajustan el volumen',
     crt: 'EFECTO CRT',
     tips: 'CONSEJOS Y TARJETAS',
     on: 'SÍ',
