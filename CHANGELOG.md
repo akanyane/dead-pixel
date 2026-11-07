@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/akanyane/dead-pixel/compare/v1.2.0...v1.3.0) (2026-11-07)
+
+
+### Features
+
+* add fullscreen, landscape lock and a rotate prompt on phones ([7fa08cb](https://github.com/akanyane/dead-pixel/commit/7fa08cbee2b334efcf127763739472a3b3fd9ab0))
+* make the game installable and playable offline ([#9](https://github.com/akanyane/dead-pixel/issues/9)) ([7fa08cb](https://github.com/akanyane/dead-pixel/commit/7fa08cbee2b334efcf127763739472a3b3fd9ab0))
+
 ## [1.2.0](https://github.com/akanyane/dead-pixel/compare/v1.1.0...v1.2.0) (2026-11-07)
 
 
