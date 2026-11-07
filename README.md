@@ -7,6 +7,10 @@
 Shooter 2D top-down para navegador, sangrento e cheio de piadas de TI.
 5 fases, 5 chefes, 6 armas e um terminal de verdade para digitar `rm -rf` em câmera lenta.
 
+### [![▶ Jogar agora](https://img.shields.io/badge/%E2%96%B6%20JOGAR%20AGORA-e8222a?style=for-the-badge&logoColor=white)](https://akanyane.github.io/dead-pixel/)
+
+<sub>De graça, no navegador, sem instalar nada. Precisa de teclado e mouse.</sub>
+
 [![Release](https://img.shields.io/github/v/release/akanyane/dead-pixel?style=flat-square&color=39ff88&label=release)](https://github.com/akanyane/dead-pixel/releases)
 [![release-please](https://img.shields.io/github/actions/workflow/status/akanyane/dead-pixel/release-please.yml?style=flat-square&label=release-please)](https://github.com/akanyane/dead-pixel/actions/workflows/release-please.yml)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-ff2a2a?style=flat-square)](LICENSE)
@@ -56,6 +60,10 @@ Shooter 2D top-down para navegador, sangrento e cheio de piadas de TI.
 Você é o `root`, o último administrador de sistemas funcionando. Sua missão é descer do escritório até a origem do problema, passando pelo data center, pelos cabos que ninguém documentou e por um sistema escrito em 1974. No fim, você vai ter que olhar para o pixel.
 
 ## Como jogar agora
+
+### No navegador
+
+Abra **[akanyane.github.io/dead-pixel](https://akanyane.github.io/dead-pixel/)** e pronto. O site é atualizado sozinho a cada mudança na `main`.
 
 ### Rodando o código
 
@@ -367,6 +375,8 @@ O projeto ainda não tem testes automatizados.
 ## Publicando o jogo
 
 `npm run build` gera um site estático em `dist/`, com caminhos relativos. Ele funciona em qualquer hospedagem estática, inclusive em subpastas, como Vercel, Netlify, Cloudflare Pages ou GitHub Pages.
+
+A versão oficial está no GitHub Pages: o workflow `deploy-pages.yml` compila e publica o jogo a cada push na `main`. Em um fork, ative **Settings > Pages > Source: GitHub Actions** para usar o mesmo fluxo.
 
 ## Como as releases funcionam
 
