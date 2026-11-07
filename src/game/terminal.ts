@@ -24,6 +24,7 @@ export const COMMANDS: Command[] = [
       if (g.allies.length >= 4) return T().term.forkLimit;
       g.allies.push({ x: p.x + rand(-10, 10), y: p.y + rand(-10, 10), life: 20, cd: 0, walk: 0, flip: false, aim: 0 });
       glitchPixels(g, p.x, p.y - 8, 30, 90);
+      if (g.allies.length >= 4) g.unlock('fork_4');
       return T().term.forkOk(g.allies.length, 3000 + Math.floor(rand(999)));
     },
   },
@@ -123,6 +124,7 @@ export class Terminal {
         return;
       }
       p.ram -= found.cost;
+      g.usedCommand = true;
       this.print(found.run(g), '#a8ffc0');
       g.audio.command();
       g.glitch = Math.max(g.glitch, 0.25);
@@ -132,6 +134,9 @@ export class Terminal {
     const lore = T().term.lore[cmd];
     if (lore) {
       lore.forEach((t) => this.print(t, '#ffd23d'));
+      if (!g.progress.lore.includes(cmd)) g.progress.lore.push(cmd);
+      if (cmd === 'cat noa.img') g.unlock('cat_noa');
+      g.checkAchievements();
       return;
     }
     this.print(T().term.notFound(cmd.split(' ')[0]), '#ff5a6a');

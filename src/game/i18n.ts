@@ -36,6 +36,7 @@ interface Strings {
     continue: (level: number, title: string) => string;
     newGame: string;
     skins: string;
+    achievements: string;
     manual: string;
     options: string;
     controls: string;
@@ -57,6 +58,7 @@ interface Strings {
     wave: (i: number, n: number, left: number) => string;
     controlsHint: string;
     toastSkin: (name: string) => string;
+    toastAchievement: (name: string) => string;
   };
   term: {
     bar: string;
@@ -167,6 +169,16 @@ interface Strings {
     howTo: string;
   };
   skins: Record<string, { name: string; desc: string; unlock?: string }>;
+  achievementsScreen: {
+    count: string;
+    unlocked: string;
+    locked: string;
+    hiddenName: string;
+    hiddenDesc: string;
+    nav: string;
+    progress: string;
+  };
+  achievements: Record<string, { name: string; desc: string }>;
   killers: Record<'deploy' | 'corrupt' | 'beam', { name: string; tip: string }>;
   enemies: Record<EnemyKind, EnemyText>;
   weapons: Record<WeaponId, WeaponText>;
@@ -185,6 +197,7 @@ const pt: Strings = {
     continue: (level, title) => `CONTINUAR  (fase ${level}: ${title})`,
     newGame: 'NOVO JOGO',
     skins: 'SKINS',
+    achievements: 'CONQUISTAS',
     manual: 'MANUAL: INIMIGOS E DICAS',
     options: 'OPÇÕES',
     controls: 'WASD move | mouse mira e atira | ESPAÇO dash | F golpe | Q terminal',
@@ -210,6 +223,7 @@ const pt: Strings = {
     wave: (i, n, left) => `wave ${i}/${n}  |  ${left} procs`,
     controlsHint: 'WASD anda | mouse atira | ESPAÇO dash | F golpe | Q terminal: digite help',
     toastSkin: (name) => `SKIN LIBERADA: ${name}`,
+    toastAchievement: (name) => `CONQUISTA: ${name}`,
   },
   term: {
     bar: 'BULLET TIME  |  ESC fecha',
@@ -399,6 +413,43 @@ const pt: Strings = {
     deadpixel: { name: 'pixel morto', desc: 'Você olhou para ele. Agora ele usa você.', unlock: 'vença o Pixel Morto' },
     butcher: { name: 'açougueiro', desc: 'Esta roupa já foi branca. Você já foi outra pessoa.', unlock: 'faça uma sequência de 100 abates' },
   },
+  achievementsScreen: {
+    count: 'conquistadas',
+    unlocked: 'CONQUISTADA',
+    locked: 'BLOQUEADA',
+    hiddenName: '???',
+    hiddenDesc: 'Conquista oculta. Continue jogando.',
+    nav: 'setas ou mouse  |  ESC volta',
+    progress: 'PROGRESSO',
+  },
+  achievements: {
+    first_blood: { name: 'Primeiro sinal', desc: 'Encerre seu primeiro processo.' },
+    kills_1000: { name: 'Coleta de lixo', desc: 'Encerre 1000 processos, somando todas as partidas.' },
+    streak_50: { name: 'Sem parar', desc: 'Faça uma sequência de 50 abates.' },
+    streak_100: { name: 'Nenhuma resposta', desc: 'Faça uma sequência de 100 abates.' },
+    melee_50: { name: 'Força bruta', desc: 'Mate 50 inimigos com o pé de cabra, somando todas as partidas.' },
+    chain_3: { name: 'Reação em cadeia', desc: 'Explodir 3 baterias em menos de 1,5 segundo.' },
+    rm_20: { name: 'rm -rf', desc: 'Encerre 20 processos com um único rm -rf.' },
+    fork_4: { name: 'Processos filhos', desc: 'Tenha 4 clones ativos ao mesmo tempo.' },
+    clean_wave: { name: 'Sem incidentes', desc: 'Termine uma wave sem levar dano.' },
+    close_call: { name: 'Por um fio', desc: 'Termine uma wave com menos de 10% do HP.' },
+    beat_scrum: { name: 'Sem supervisão', desc: 'Vença o Supervisor.' },
+    beat_kernel: { name: 'Not syncing', desc: 'Vença o Kernel Panic.' },
+    beat_hydra: { name: 'Réplicas: 0', desc: 'Vença a Hidra de Microsserviços.' },
+    beat_monolith: { name: 'STOP RUN.', desc: 'Vença o Monolito Legado.' },
+    clean_boss: { name: 'Zero downtime', desc: 'Vença um chefe sem levar dano durante a luta.' },
+    pistol_level: { name: 'Só printf()', desc: 'Termine uma fase sem disparar nenhuma outra arma.' },
+    no_commands: { name: 'Sem privilégios', desc: 'Termine uma fase sem executar comandos pagos no terminal.' },
+    all_weapons: { name: 'Arsenal completo', desc: 'Tenha as 6 armas.' },
+    backup_used: { name: 'Restaurado', desc: 'Sobreviva à morte com o patch ponto de restauração.' },
+    all_skins: { name: 'Guarda-roupa', desc: 'Libere todas as skins.' },
+    deaths_10: { name: 'Core dumped', desc: 'Morra 10 vezes. O sistema guarda todas.' },
+    lore_5: { name: 'Perícia', desc: 'Use 5 comandos de investigação diferentes no terminal.' },
+    cat_noa: { name: '3%', desc: 'Abra o arquivo noa.img no terminal.' },
+    ending: { name: 'Só mais uma tentativa', desc: 'Chegue ao fim da execução.' },
+    second_run: { name: 'Déjà vu', desc: 'Termine o jogo duas vezes. Você não se lembra da primeira.' },
+    platinum: { name: 'root', desc: 'Consiga todas as outras conquistas.' },
+  },
   killers: {
     deploy: { name: 'faixa de deploy', tip: 'A área que pisca em vermelho queima logo depois. Saia dela ou dê dash, e tente deixar os inimigos lá dentro.' },
     corrupt: { name: 'tile corrompido', tip: 'Quadrados pretos machucam enquanto durarem. Eles somem sozinhos: mantenha uma rota livre e não fique parado.' },
@@ -500,6 +551,7 @@ const en: Strings = {
     continue: (level, title) => `CONTINUE  (level ${level}: ${title})`,
     newGame: 'NEW GAME',
     skins: 'SKINS',
+    achievements: 'ACHIEVEMENTS',
     manual: 'MANUAL: ENEMIES AND TIPS',
     options: 'OPTIONS',
     controls: 'WASD move | mouse aim and shoot | SPACE dash | F strike | Q terminal',
@@ -525,6 +577,7 @@ const en: Strings = {
     wave: (i, n, left) => `wave ${i}/${n}  |  ${left} procs`,
     controlsHint: 'WASD move | mouse shoot | SPACE dash | F strike | Q terminal: type help',
     toastSkin: (name) => `SKIN UNLOCKED: ${name}`,
+    toastAchievement: (name) => `ACHIEVEMENT: ${name}`,
   },
   term: {
     bar: 'BULLET TIME  |  ESC closes',
@@ -714,6 +767,43 @@ const en: Strings = {
     deadpixel: { name: 'dead pixel', desc: 'You looked at it. Now it wears you.', unlock: 'defeat the Dead Pixel' },
     butcher: { name: 'butcher', desc: 'These clothes used to be white. You used to be someone else.', unlock: 'reach a streak of 100 kills' },
   },
+  achievementsScreen: {
+    count: 'unlocked',
+    unlocked: 'UNLOCKED',
+    locked: 'LOCKED',
+    hiddenName: '???',
+    hiddenDesc: 'Hidden achievement. Keep playing.',
+    nav: 'arrows or mouse  |  ESC back',
+    progress: 'PROGRESS',
+  },
+  achievements: {
+    first_blood: { name: 'First signal', desc: 'Terminate your first process.' },
+    kills_1000: { name: 'Garbage collection', desc: 'Terminate 1000 processes across all your games.' },
+    streak_50: { name: 'No pause', desc: 'Reach a streak of 50 kills.' },
+    streak_100: { name: 'No response', desc: 'Reach a streak of 100 kills.' },
+    melee_50: { name: 'Brute force', desc: 'Kill 50 enemies with the crowbar across all your games.' },
+    chain_3: { name: 'Chain reaction', desc: 'Blow up 3 batteries in under 1.5 seconds.' },
+    rm_20: { name: 'rm -rf', desc: 'Terminate 20 processes with a single rm -rf.' },
+    fork_4: { name: 'Child processes', desc: 'Have 4 clones active at the same time.' },
+    clean_wave: { name: 'No incidents', desc: 'Finish a wave without taking damage.' },
+    close_call: { name: 'By a thread', desc: 'Finish a wave with less than 10% HP.' },
+    beat_scrum: { name: 'Unsupervised', desc: 'Defeat the Supervisor.' },
+    beat_kernel: { name: 'Not syncing', desc: 'Defeat the Kernel Panic.' },
+    beat_hydra: { name: 'Replicas: 0', desc: 'Defeat the Microservice Hydra.' },
+    beat_monolith: { name: 'STOP RUN.', desc: 'Defeat the Legacy Monolith.' },
+    clean_boss: { name: 'Zero downtime', desc: 'Defeat a boss without taking damage during the fight.' },
+    pistol_level: { name: 'Only printf()', desc: 'Finish a level without firing any other weapon.' },
+    no_commands: { name: 'No privileges', desc: 'Finish a level without running paid terminal commands.' },
+    all_weapons: { name: 'Full arsenal', desc: 'Own all 6 weapons.' },
+    backup_used: { name: 'Restored', desc: 'Survive death with the restore point patch.' },
+    all_skins: { name: 'Wardrobe', desc: 'Unlock every skin.' },
+    deaths_10: { name: 'Core dumped', desc: 'Die 10 times. The system keeps them all.' },
+    lore_5: { name: 'Forensics', desc: 'Use 5 different investigation commands in the terminal.' },
+    cat_noa: { name: '3%', desc: 'Open the noa.img file in the terminal.' },
+    ending: { name: 'Just one more try', desc: 'Reach the end of the run.' },
+    second_run: { name: 'Deja vu', desc: 'Finish the game twice. You do not remember the first time.' },
+    platinum: { name: 'root', desc: 'Get every other achievement.' },
+  },
   killers: {
     deploy: { name: 'deploy strip', tip: 'The area flashing red burns right after. Leave it or dash, and try to keep the enemies inside.' },
     corrupt: { name: 'corrupted tile', tip: 'Black squares hurt for as long as they last. They vanish on their own: keep a clear route and do not stand still.' },
@@ -815,6 +905,7 @@ const es: Strings = {
     continue: (level, title) => `CONTINUAR  (nivel ${level}: ${title})`,
     newGame: 'NUEVA PARTIDA',
     skins: 'SKINS',
+    achievements: 'LOGROS',
     manual: 'MANUAL: ENEMIGOS Y CONSEJOS',
     options: 'OPCIONES',
     controls: 'WASD mover | ratón apuntar y disparar | ESPACIO dash | F golpe | Q terminal',
@@ -840,6 +931,7 @@ const es: Strings = {
     wave: (i, n, left) => `oleada ${i}/${n}  |  ${left} procs`,
     controlsHint: 'WASD mover | ratón disparar | ESPACIO dash | F golpe | Q: escribe help',
     toastSkin: (name) => `SKIN DESBLOQUEADA: ${name}`,
+    toastAchievement: (name) => `LOGRO: ${name}`,
   },
   term: {
     bar: 'BULLET TIME  |  ESC cierra',
@@ -1028,6 +1120,43 @@ const es: Strings = {
     cobol: { name: 'mainframe', desc: 'Gris y fósforo verde. Ya estaba aquí antes que todos.', unlock: 'vence al Monolito Heredado' },
     deadpixel: { name: 'píxel muerto', desc: 'Lo miraste. Ahora él te lleva puesto.', unlock: 'vence al Píxel Muerto' },
     butcher: { name: 'carnicero', desc: 'Esta ropa alguna vez fue blanca. Tú alguna vez fuiste otra persona.', unlock: 'logra una racha de 100 bajas' },
+  },
+  achievementsScreen: {
+    count: 'conseguidos',
+    unlocked: 'CONSEGUIDO',
+    locked: 'BLOQUEADO',
+    hiddenName: '???',
+    hiddenDesc: 'Logro oculto. Sigue jugando.',
+    nav: 'flechas o ratón  |  ESC volver',
+    progress: 'PROGRESO',
+  },
+  achievements: {
+    first_blood: { name: 'Primera señal', desc: 'Termina tu primer proceso.' },
+    kills_1000: { name: 'Recolección', desc: 'Termina 1000 procesos, sumando todas tus partidas.' },
+    streak_50: { name: 'Sin pausa', desc: 'Logra una racha de 50 bajas.' },
+    streak_100: { name: 'Sin respuesta', desc: 'Logra una racha de 100 bajas.' },
+    melee_50: { name: 'Fuerza bruta', desc: 'Mata a 50 enemigos con la palanca, sumando todas tus partidas.' },
+    chain_3: { name: 'Reacción en cadena', desc: 'Haz explotar 3 baterías en menos de 1,5 segundos.' },
+    rm_20: { name: 'rm -rf', desc: 'Termina 20 procesos con un solo rm -rf.' },
+    fork_4: { name: 'Procesos hijos', desc: 'Ten 4 clones activos al mismo tiempo.' },
+    clean_wave: { name: 'Sin incidentes', desc: 'Termina una oleada sin recibir daño.' },
+    close_call: { name: 'Por un hilo', desc: 'Termina una oleada con menos del 10% de HP.' },
+    beat_scrum: { name: 'Sin supervisión', desc: 'Vence al Supervisor.' },
+    beat_kernel: { name: 'Not syncing', desc: 'Vence al Kernel Panic.' },
+    beat_hydra: { name: 'Réplicas: 0', desc: 'Vence a la Hidra de Microservicios.' },
+    beat_monolith: { name: 'STOP RUN.', desc: 'Vence al Monolito Heredado.' },
+    clean_boss: { name: 'Zero downtime', desc: 'Vence a un jefe sin recibir daño durante la pelea.' },
+    pistol_level: { name: 'Solo printf()', desc: 'Termina un nivel sin disparar ninguna otra arma.' },
+    no_commands: { name: 'Sin privilegios', desc: 'Termina un nivel sin ejecutar comandos de pago en el terminal.' },
+    all_weapons: { name: 'Arsenal completo', desc: 'Ten las 6 armas.' },
+    backup_used: { name: 'Restaurado', desc: 'Sobrevive a la muerte con el parche punto de restauración.' },
+    all_skins: { name: 'Vestuario', desc: 'Desbloquea todas las skins.' },
+    deaths_10: { name: 'Core dumped', desc: 'Muere 10 veces. El sistema las guarda todas.' },
+    lore_5: { name: 'Peritaje', desc: 'Usa 5 comandos de investigación distintos en el terminal.' },
+    cat_noa: { name: '3%', desc: 'Abre el archivo noa.img en el terminal.' },
+    ending: { name: 'Solo un intento más', desc: 'Llega al final de la ejecución.' },
+    second_run: { name: 'Déjà vu', desc: 'Termina el juego dos veces. No recuerdas la primera.' },
+    platinum: { name: 'root', desc: 'Consigue todos los demás logros.' },
   },
   killers: {
     deploy: { name: 'franja de deploy', tip: 'La zona que parpadea en rojo arde justo después. Sal de ella o usa dash, e intenta dejar a los enemigos dentro.' },

@@ -1,6 +1,7 @@
 import { Sound } from '../core/audio';
 import { Input } from '../core/input';
 import { H, TILE, W, chance, clamp, dist, lerp, pick, shuffle, storageDel, storageGet, storageSet } from '../core/util';
+import { ACHIEVEMENTS, PLATINUM } from './achievements';
 import { updateCombat, spawnPickupsForWaveClear, giveWeapon } from './combat';
 import { ENEMIES, KILL_WORDS, LEVELS, PERKS, RUN_BASE, SKINS, STREAKS, VICTIM_NAMES, WEAPONS, type EnemyDef, type EnemyKind, type LevelDef, type PerkDef, type SkinDef, type WeaponId } from './data';
 import { LANGS, T, detectLang, getLang, setLang, type Lang } from './i18n';
@@ -20,6 +21,10 @@ export interface Progress {
   skin: string;
   notified: string[];
   runs: number;
+  achievements: string[];
+  kills: number;
+  meleeKills: number;
+  lore: string[];
 }
 
 export interface Enemy {
@@ -229,7 +234,7 @@ export interface Player {
   dead: boolean;
 }
 
-export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log';
+export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log' | 'achievements';
 type Phase = 'wave' | 'waveClear' | 'bossIntro' | 'boss' | 'bossDeath';
 
 interface Snapshot {
@@ -341,7 +346,12 @@ export class Game {
   tipsOn = true;
   god = false;
 
-  progress: Progress = { beaten: [], bestStreak: 0, deaths: 0, seen: [], skin: 'root', notified: [], runs: 0 };
+  progress: Progress = { beaten: [], bestStreak: 0, deaths: 0, seen: [], skin: 'root', notified: [], runs: 0, achievements: [], kills: 0, meleeKills: 0, lore: [] };
+  achievementIdx = 0;
+  tookDamage = false;
+  usedWeapon = false;
+  usedCommand = false;
+  barrelBooms: number[] = [];
   logT = 0;
   endPage = 0;
   endT = 0;
@@ -384,6 +394,8 @@ export class Game {
     } catch {
       /* progresso novo */
     }
+    // quem já jogou recebe o que já cumpriu, sem uma chuva de avisos
+    this.checkAchievements(true);
     this.audio.musicOn = this.musicOn;
     this.map = buildMap('office');
     this.wet = new Uint8Array(this.map.w * this.map.h);
@@ -421,6 +433,28 @@ export class Game {
     const u = s.unlock;
     if (!u) return true;
     return 'boss' in u ? this.progress.beaten.includes(u.boss) : this.progress.bestStreak >= u.streak;
+  }
+
+  unlock(id: string, silent = false) {
+    const list = this.progress.achievements;
+    if (list.includes(id)) return;
+    list.push(id);
+    if (!silent) {
+      this.toasts.push({ text: T().hud.toastAchievement(T().achievements[id].name), t: 3.5 });
+      this.audio.announce();
+    }
+    if (id !== PLATINUM && list.filter((a) => a !== PLATINUM).length === ACHIEVEMENTS.length - 1) this.unlock(PLATINUM, silent);
+    this.saveProgress();
+  }
+
+  /** Confere as conquistas que dependem só de números salvos. */
+  checkAchievements(silent = false) {
+    for (const a of ACHIEVEMENTS) {
+      if (a.stat && a.id !== PLATINUM && !this.progress.achievements.includes(a.id)) {
+        const [cur, max] = a.stat(this);
+        if (cur >= max) this.unlock(a.id, silent);
+      }
+    }
   }
 
   /** Avisa uma única vez cada skin que acabou de ser liberada. */
@@ -563,6 +597,9 @@ export class Game {
     this.waveIdx = 0;
     this.storyT = 0;
     this.hintsShown.clear();
+    this.usedWeapon = false;
+    this.usedCommand = false;
+    this.barrelBooms = [];
     this.storyTip = Math.floor(Math.random() * T().manual.tips.length);
     this.setState('story');
     this.audio.playMusic(this.level.music);
@@ -581,6 +618,7 @@ export class Game {
     this.queue = shuffle(q);
     this.phase = 'wave';
     this.spawnAcc = 0;
+    this.tookDamage = false;
     this.note = { text: `${this.waveIdx + 1}/${this.level.waves.length}: ${T().levels[this.levelIdx].notes[this.waveIdx]}`, t: 3.2 };
     this.audio.warn();
     this.queueIntro(w.spawns.map(([k]) => k));
@@ -588,6 +626,7 @@ export class Game {
 
   startBoss() {
     this.phase = 'bossIntro';
+    this.tookDamage = false;
     this.phaseT = 3;
     this.queue = [];
     spawnBoss(this, this.level.boss);
@@ -682,6 +721,7 @@ export class Game {
   }
 
   quitToMenu() {
+    this.saveProgress();
     this.setState('menu');
     this.audio.playMusic('menu');
     this.audio.setMuffled(false);
@@ -730,6 +770,7 @@ export class Game {
 
   registerKill(e: Enemy) {
     this.kills++;
+    this.progress.kills++;
     this.streak++;
     this.streakT = 3.5;
     if (this.streak > this.maxStreak) this.maxStreak = this.streak;
@@ -737,6 +778,7 @@ export class Game {
       this.progress.bestStreak = this.streak;
       if (this.streak === 100) this.checkUnlocks();
     }
+    this.checkAchievements();
     const mult = this.multiplier();
     this.score += e.def.score * mult;
     const p = this.player;
@@ -830,6 +872,8 @@ export class Game {
       if (this.spawnAcc > 2) this.spawnAcc = 2;
       if (!this.queue.length && this.enemies.length === 0) {
         this.phase = 'waveClear';
+        if (!this.tookDamage) this.unlock('clean_wave');
+        if (this.player.hp < this.player.maxHp * 0.1) this.unlock('close_call');
         this.phaseT = 1.3;
         this.audio.announce();
         this.note = { text: T().notes.waveClear, t: 1.3 };
@@ -869,6 +913,9 @@ export class Game {
     this.saveBest();
     if (!this.progress.beaten.includes(this.level.boss)) this.progress.beaten.push(this.level.boss);
     this.checkUnlocks();
+    if (!this.tookDamage) this.unlock('clean_boss');
+    if (!this.usedWeapon) this.unlock('pistol_level');
+    if (!this.usedCommand) this.unlock('no_commands');
     // crate esquecida no chão não pode custar uma arma
     for (const pk of this.pickups) if (pk.kind === 'weapon' && pk.weapon) giveWeapon(this, pk.weapon, false);
     const reward = this.level.reward;
@@ -883,12 +930,14 @@ export class Game {
       this.endRun = this.run();
       this.progress.runs++;
       this.saveProgress();
+      this.checkAchievements();
       this.endPage = 0;
       this.endT = 0;
       this.setState('victory');
       this.audio.playMusic(null);
     } else {
       this.setState('clear');
+      this.checkAchievements();
     }
   }
 

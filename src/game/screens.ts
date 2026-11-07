@@ -2,6 +2,7 @@
 import { drawText, wrap } from '../core/font';
 import type { Input } from '../core/input';
 import { H, W } from '../core/util';
+import { ACHIEVEMENTS } from './achievements';
 import { ENEMIES, LEVELS, SKINS, WEAPONS, WEAPON_ORDER, type EnemyKind } from './data';
 import type { Enemy, Game } from './game';
 import { bar } from './hud';
@@ -388,5 +389,113 @@ export function renderSkins(g: Game, ctx: CanvasRenderingContext2D) {
   drawText(ctx, tag, W - GRID_X, py, !open ? '#ffd23d' : '#39ff88', { align: 'right' });
   drawText(ctx, wrap(info.desc, 74)[0], GRID_X, py + 11, '#aab7c4');
   if (!open && info.unlock) drawText(ctx, `${u.howTo}: ${info.unlock}`, GRID_X, py + 22, '#ffd23d');
+  drawText(ctx, u.nav, W / 2, H - 12, '#6d8a78', { align: 'center' });
+}
+
+// ---------- Conquistas ----------
+
+const ACH_X = 10;
+const ACH_Y = 38;
+const ACH_W = 156;
+const ACH_ROW = 13;
+const ACH_VISIBLE = 16;
+
+function achScroll(idx: number) {
+  return Math.max(0, Math.min(ACHIEVEMENTS.length - ACH_VISIBLE, idx - Math.floor(ACH_VISIBLE / 2)));
+}
+
+export function openAchievements(g: Game, from: 'menu' | 'pause') {
+  g.returnTo = from;
+  g.achievementIdx = 0;
+  g.setState('achievements');
+}
+
+export function updateAchievements(g: Game, input: Input) {
+  const n = ACHIEVEMENTS.length;
+  const move = (d: number) => {
+    g.achievementIdx = (g.achievementIdx + d + n) % n;
+    g.audio.ui();
+  };
+  if (input.hit('ArrowDown', 'KeyS')) move(1);
+  if (input.hit('ArrowUp', 'KeyW')) move(-1);
+  if (input.wheel) g.achievementIdx = Math.max(0, Math.min(n - 1, g.achievementIdx + input.wheel));
+  const moved = input.mx !== lastMx || input.my !== lastMy;
+  lastMx = input.mx;
+  lastMy = input.my;
+  const row = Math.floor((input.my - ACH_Y + 2) / ACH_ROW);
+  const scroll = achScroll(g.achievementIdx);
+  if (input.mx >= ACH_X && input.mx < ACH_X + ACH_W && row >= 0 && row < ACH_VISIBLE && (moved || input.leftPressed)) {
+    g.achievementIdx = Math.min(n - 1, scroll + row);
+  }
+  if (input.hit('Escape', 'Backspace') || (input.leftPressed && input.my >= H - 16)) {
+    g.setState(g.returnTo);
+    g.audio.ui();
+  }
+}
+
+function trophy(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, on: boolean) {
+  const rows = ['.GGGGGGGG.', 'GGGGGGGGGG', 'G.GGGGGG.G', 'GGGGGGGGGG', '..GGGGGG..', '...GGGG...', '....GG....', '....GG....', '..DDDDDD..', '..DDDDDD..'];
+  rows.forEach((r, ry) => {
+    for (let rx = 0; rx < r.length; rx++) {
+      if (r[rx] === '.') continue;
+      ctx.fillStyle = on ? (r[rx] === 'G' ? (rx < 4 ? '#ffe680' : '#ffd23d') : '#a87a12') : r[rx] === 'G' ? '#3b4650' : '#2b343c';
+      ctx.fillRect(x + rx * s, y + ry * s, s, s);
+    }
+  });
+}
+
+export function renderAchievements(g: Game, ctx: CanvasRenderingContext2D) {
+  const t = T();
+  const u = t.achievementsScreen;
+  ctx.fillStyle = '#05080c';
+  ctx.fillRect(0, 0, W, H);
+  const done = g.progress.achievements;
+  const total = ACHIEVEMENTS.length;
+  drawText(ctx, t.menu.achievements, ACH_X, 9, '#f0efe8', { scale: 2 });
+  drawText(ctx, `${done.length}/${total} ${u.count}`, W - ACH_X, 9, '#ffd23d', { align: 'right' });
+  bar(ctx, W - ACH_X - 120, 20, 120, 3, done.length / total, '#ffd23d');
+
+  const scroll = achScroll(g.achievementIdx);
+  ACHIEVEMENTS.slice(scroll, scroll + ACH_VISIBLE).forEach((a, i) => {
+    const idx = scroll + i;
+    const on = g.achievementIdx === idx;
+    const got = done.includes(a.id);
+    const y = ACH_Y + i * ACH_ROW;
+    if (on) {
+      ctx.fillStyle = '#16302a';
+      ctx.fillRect(ACH_X, y - 2, ACH_W, ACH_ROW - 1);
+      ctx.fillStyle = '#39ff88';
+      ctx.fillRect(ACH_X, y - 2, 2, ACH_ROW - 1);
+    }
+    trophy(ctx, ACH_X + 5, y - 1, 1, got);
+    const name = a.hidden && !got ? u.hiddenName : t.achievements[a.id].name;
+    drawText(ctx, name, ACH_X + 19, y, got ? '#ffffff' : on ? '#aab7c4' : '#6d7f8f');
+  });
+  if (scroll > 0) drawText(ctx, '^', ACH_X + ACH_W - 8, ACH_Y - 11, '#6d8a78');
+  if (scroll + ACH_VISIBLE < total) drawText(ctx, 'v', ACH_X + ACH_W - 8, ACH_Y + ACH_VISIBLE * ACH_ROW - 3, '#6d8a78');
+
+  ctx.fillStyle = '#16202a';
+  ctx.fillRect(ACH_X + ACH_W + 5, ACH_Y - 2, 1, H - ACH_Y - 14);
+
+  const a = ACHIEVEMENTS[g.achievementIdx];
+  const got = done.includes(a.id);
+  const masked = !!a.hidden && !got;
+  const x = ACH_X + ACH_W + 14;
+  ctx.fillStyle = '#0b1016';
+  ctx.fillRect(x, ACH_Y, 56, 56);
+  ctx.strokeStyle = got ? '#ffd23d' : '#2b3844';
+  ctx.strokeRect(x + 0.5, ACH_Y + 0.5, 55, 55);
+  trophy(ctx, x + 8, ACH_Y + 8, 4, got);
+  drawText(ctx, masked ? u.hiddenName : t.achievements[a.id].name, x + 64, ACH_Y + 4, got ? '#ffd23d' : '#ffffff');
+  drawText(ctx, got ? u.unlocked : u.locked, x + 64, ACH_Y + 16, got ? '#39ff88' : '#6d7f8f');
+  paragraph(ctx, masked ? u.hiddenDesc : t.achievements[a.id].desc, x, ACH_Y + 68, 47, '#dfe6ee');
+  if (a.stat && !masked && !got) {
+    const [cur, max] = a.stat(g);
+    if (max > 1) {
+      drawText(ctx, u.progress, x, ACH_Y + 112, '#39ff88');
+      drawText(ctx, `${Math.min(cur, max)}/${max}`, W - ACH_X, ACH_Y + 112, '#ffffff', { align: 'right' });
+      bar(ctx, x, ACH_Y + 123, W - ACH_X - x, 4, cur / max, '#39ff88');
+    }
+  }
   drawText(ctx, u.nav, W / 2, H - 12, '#6d8a78', { align: 'center' });
 }

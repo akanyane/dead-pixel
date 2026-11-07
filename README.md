@@ -38,6 +38,7 @@ Shooter 2D top-down de terror e mistério tecnológico, para navegador.
 - [Fases e chefes](#fases-e-chefes)
 - [Patches (melhorias)](#patches-melhorias)
 - [Skins](#skins)
+- [Conquistas](#conquistas)
 - [Idiomas](#idiomas)
 - [Manual e dicas no jogo](#manual-e-dicas-no-jogo)
 - [Pontuação e sequências](#pontuação-e-sequências)
@@ -278,6 +279,14 @@ Escolha a roupa do seu `root` em **SKINS**, no menu principal. Quatro já vêm l
 
 As skins são só visuais, e cada uma tem o próprio rastro de dash.
 
+## Conquistas
+
+São 26 conquistas, disponíveis no menu e na pausa, com barra de progresso nas que dependem de contagem. Elas ficam salvas no navegador. Algumas são ocultas e só revelam o que são depois de conquistadas, para não entregar a história.
+
+<div align="center"><img src="docs/screenshots/achievements.jpg" alt="Tela de conquistas, com a lista à esquerda e os detalhes da conquista selecionada à direita" width="720"></div>
+
+Elas premiam combate (sequências, abates somados, um único `rm -rf` encerrando 20 processos), desafios (vencer um chefe sem levar dano, terminar uma fase só com a `printf()`) e investigação no terminal.
+
 ## Idiomas
 
 O jogo inteiro está em **português**, **inglês** e **espanhol**, incluindo história, logs, manual, respostas do terminal e até o texto pintado no chão. Na primeira vez, o idioma segue o do navegador. Para trocar, use `IDIOMA / LANGUAGE` no menu principal ou nas opções.
@@ -312,7 +321,7 @@ Cada abate em sequência renova um timer de 3,5 segundos, e levar dano encurta e
 | 150 | ELES SENTEM ISSO? |
 | 250 | QUEM É VOCÊ? |
 
-O progresso, o recorde, as skins e as opções ficam salvos no `localStorage` do navegador. Não há servidor nem conta.
+O progresso, o recorde, as skins, as conquistas e as opções ficam salvos no `localStorage` do navegador. Não há servidor nem conta.
 
 ## Dicas de sobrevivência
 
@@ -374,6 +383,7 @@ dead-pixel/
 │   │   └── util.ts         # Matemática e helpers
 │   └── game/
 │       ├── data.ts         # ⭐ Inimigos, armas, perks, skins e fases: balanceie aqui
+│       ├── achievements.ts # Lista de conquistas e regras de progresso
 │       ├── i18n.ts         # Todos os textos, em português, inglês e espanhol
 │       ├── screens.ts      # Manual, cartões de inimigo e seleção de skin
 │       ├── game.ts         # Estado, waves, save e progressão
