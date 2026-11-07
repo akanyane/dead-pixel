@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/akanyane/dead-pixel/compare/v1.3.0...v1.3.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* stop bugs from outrunning the player and sticking to them ([#11](https://github.com/akanyane/dead-pixel/issues/11)) ([1c1329d](https://github.com/akanyane/dead-pixel/commit/1c1329d13454d705b0a8263b630a650c537337a6))
+
 ## [1.3.0](https://github.com/akanyane/dead-pixel/compare/v1.2.0...v1.3.0) (2026-11-07)
 
 
