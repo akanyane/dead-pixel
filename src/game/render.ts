@@ -339,8 +339,10 @@ export function renderWorld(g: Game, ctx: CanvasRenderingContext2D) {
   const m = g.map;
   const shakeX = g.shake > 0 ? rand(-g.shake, g.shake) * 0.5 : 0;
   const shakeY = g.shake > 0 ? rand(-g.shake, g.shake) * 0.5 : 0;
-  const ox = Math.round(g.camX + g.kickX + shakeX);
-  const oy = Math.round(g.camY + g.kickY + shakeY);
+  // reduced effects also tame the camera kick from shots and hits
+  const kick = g.reducedFx ? 0.3 : 1;
+  const ox = Math.round(g.camX + g.kickX * kick + shakeX);
+  const oy = Math.round(g.camY + g.kickY * kick + shakeY);
 
   ctx.fillStyle = m.theme === 'void' ? '#ffffff' : '#050507';
   ctx.fillRect(0, 0, W, H);
@@ -645,7 +647,8 @@ function renderLights(g: Game, ctx: CanvasRenderingContext2D, ox: number, oy: nu
   if (m.theme === 'void') return;
   const pl = g.player;
   lctx.globalCompositeOperation = 'source-over';
-  lctx.fillStyle = g.level.ambient;
+  // blackout modifier: almost no ambient light, only the flashlight and what glows
+  lctx.fillStyle = g.modifier === 'blackout' ? '#0e0e14' : g.level.ambient;
   lctx.fillRect(0, 0, W, H);
   lctx.globalCompositeOperation = 'lighter';
   const put = (x: number, y: number, r: number, color: string, a = 1) => {

@@ -499,3 +499,66 @@ export function renderAchievements(g: Game, ctx: CanvasRenderingContext2D) {
   }
   drawText(ctx, u.nav, W / 2, H - 12, '#6d8a78', { align: 'center' });
 }
+
+// ---------- Stats ----------
+
+/** Key with the highest count in a record, or null when it is empty. */
+function topKey(rec: Record<string, number>): string | null {
+  let best: string | null = null;
+  for (const [k, v] of Object.entries(rec)) if (v > 0 && (best === null || v > rec[best])) best = k;
+  return best;
+}
+
+function fmtDuration(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m ${String(Math.floor(seconds % 60)).padStart(2, '0')}s`;
+}
+
+export function renderStats(g: Game, ctx: CanvasRenderingContext2D) {
+  const t = T();
+  const s = t.statsScreen;
+  const P = g.progress;
+  ctx.fillStyle = '#05080c';
+  ctx.fillRect(0, 0, W, H);
+  drawText(ctx, s.title, W / 2, 14, '#f0efe8', { align: 'center', scale: 2 });
+  const killer = topKey(P.deathsBy);
+  const killerName = killer ? (killer in t.enemies ? t.enemies[killer as EnemyKind].name : t.killers[killer as 'deploy' | 'corrupt' | 'beam']?.name ?? killer) : s.none;
+  const weapon = topKey(P.shots);
+  const shots = Object.values(P.shots).reduce((n, v) => n + v, 0);
+  const bosses = Object.values(P.bossKills).reduce((n, v) => n + v, 0);
+  const eb = g.arcadeBest.endless;
+  const db = g.arcadeBest.daily;
+  const today = new Date().toISOString().slice(0, 10);
+  const rows: [string, string][] = [
+    [s.playTime, fmtDuration(P.playTime)],
+    [s.kills, String(P.kills)],
+    [s.melee, String(P.meleeKills)],
+    [s.deaths, String(P.deaths)],
+    [s.killedBy, P.deaths ? `${killerName} (${P.deathsBy[killer!]})` : s.none],
+    [s.weapon, weapon ? `${WEAPONS[weapon as keyof typeof WEAPONS].name} (${P.shots[weapon]})` : s.none],
+    [s.shots, String(shots)],
+    [s.commands, String(P.commands)],
+    [s.streak, String(P.bestStreak)],
+    [s.endings, String(P.runs)],
+    [s.bosses, String(bosses)],
+    [s.endless, eb.wave ? `${eb.wave}  (${eb.score})` : s.none],
+    [s.daily, db.date === today && db.wave ? `${db.wave}  (${db.score})` : s.none],
+  ];
+  rows.forEach(([label, value], i) => {
+    const y = 42 + i * 14;
+    if (i % 2 === 0) {
+      ctx.fillStyle = '#0b1218';
+      ctx.fillRect(60, y - 3, W - 120, 13);
+    }
+    drawText(ctx, label, 70, y, '#8fa3bf');
+    drawText(ctx, value, W - 70, y, '#ffffff', { align: 'right' });
+  });
+  drawText(ctx, s.nav, W / 2, H - 12, '#6d8a78', { align: 'center' });
+}
+
+export function updateStats(g: Game, input: Input) {
+  if (input.hit('Escape', 'Backspace', 'Enter') || (input.leftPressed && g.stateT > 0.2)) {
+    g.audio.ui();
+    g.setState('menu');
+  }
+}

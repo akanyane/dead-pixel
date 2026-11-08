@@ -4,7 +4,7 @@ import { DEFAULT_BINDINGS, type Action } from '../core/input';
 import { H, TILE, W, chance, clamp, dist, hashSeed, lerp, pick, shuffle, storageDel, storageGet, storageSet, withSeed } from '../core/util';
 import { ACHIEVEMENTS, PLATINUM } from './achievements';
 import { updateCombat, spawnPickupsForWaveClear, giveWeapon } from './combat';
-import { ARCADE_BOSSES, ARCADE_POOL, ARCADE_WAVES, DIFFICULTY, ENEMIES, KILL_WORDS, LEVELS, PERKS, RUN_BASE, SKINS, STREAKS, VICTIM_NAMES, WEAPONS, type Difficulty, type EnemyDef, type EnemyKind, type LevelDef, type PerkDef, type SkinDef, type WaveDef, type WeaponId } from './data';
+import { ARCADE_BOSSES, ARCADE_POOL, ARCADE_WAVES, DIFFICULTY, MODIFIERS, type ModifierId, ENEMIES, KILL_WORDS, LEVELS, PERKS, RUN_BASE, SKINS, STREAKS, VICTIM_NAMES, WEAPONS, type Difficulty, type EnemyDef, type EnemyKind, type LevelDef, type PerkDef, type SkinDef, type WaveDef, type WeaponId } from './data';
 import { LANGS, T, detectLang, getLang, setLang, type Lang } from './i18n';
 import { spawnEnemy, updateEnemies, spawnBoss } from './enemies';
 import { updateFx, type Gib, type Particle } from './fx';
@@ -26,6 +26,16 @@ export interface Progress {
   kills: number;
   meleeKills: number;
   lore: string[];
+  /** Seconds spent actually playing. */
+  playTime: number;
+  /** Shots fired per weapon. */
+  shots: Record<string, number>;
+  /** Deaths per killer. */
+  deathsBy: Record<string, number>;
+  /** Bosses defeated per boss, in any mode. */
+  bossKills: Record<string, number>;
+  /** Paid terminal commands run. */
+  commands: number;
 }
 
 export interface Enemy {
@@ -235,7 +245,7 @@ export interface Player {
   dead: boolean;
 }
 
-export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log' | 'achievements' | 'controls';
+export type State = 'boot' | 'menu' | 'story' | 'play' | 'perk' | 'pause' | 'dead' | 'clear' | 'victory' | 'intro' | 'manual' | 'skins' | 'options' | 'log' | 'achievements' | 'controls' | 'stats';
 
 /** Story, endless or daily run. The last two are "arcade": no story and a single life. */
 export type Mode = 'story' | 'endless' | 'daily';
@@ -290,6 +300,8 @@ export class Game {
   arcadeBest: ArcadeBest = { endless: { wave: 0, score: 0 }, daily: { date: '', wave: 0, score: 0 } };
   newBest = false;
   copiedT = 0;
+  /** Rule of the current arcade arena, or null. */
+  modifier: ModifierId | null = null;
   player!: Player;
   stats: Stats = baseStats();
   perks: Record<string, number> = {};
@@ -371,10 +383,14 @@ export class Game {
   sfxVol = 10;
   tipsOn = true;
   highContrast = false;
+  /** Less shake, flashing and glitching, for light sensitivity or motion sickness. */
+  reducedFx = false;
+  /** Fewer particles and lights, for slow machines. */
+  lightMode = false;
   god = false;
   bindings: Record<Action, string[]> = structuredClone(DEFAULT_BINDINGS);
 
-  progress: Progress = { beaten: [], bestStreak: 0, deaths: 0, seen: [], skin: 'root', notified: [], runs: 0, achievements: [], kills: 0, meleeKills: 0, lore: [] };
+  progress: Progress = { beaten: [], bestStreak: 0, deaths: 0, seen: [], skin: 'root', notified: [], runs: 0, achievements: [], kills: 0, meleeKills: 0, lore: [], playTime: 0, shots: {}, deathsBy: {}, bossKills: {}, commands: 0 };
   achievementIdx = 0;
   tookDamage = false;
   usedWeapon = false;
@@ -413,9 +429,11 @@ export class Game {
       }
     }
     try {
-      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean; musicVol?: number; sfxVol?: number; tips?: boolean; lang?: Lang; highContrast?: boolean; bindings?: Partial<Record<Action, string[]>> };
+      const o = JSON.parse(storageGet(OPTS_KEY) ?? '{}') as { gore?: number; crt?: boolean; music?: boolean; musicVol?: number; sfxVol?: number; tips?: boolean; lang?: Lang; highContrast?: boolean; reducedFx?: boolean; lightMode?: boolean; bindings?: Partial<Record<Action, string[]>> };
       if (o.tips !== undefined) this.tipsOn = o.tips;
       if (o.highContrast !== undefined) this.highContrast = o.highContrast;
+      if (o.reducedFx !== undefined) this.reducedFx = o.reducedFx;
+      if (o.lightMode !== undefined) this.lightMode = o.lightMode;
       if (o.bindings) for (const a of Object.keys(DEFAULT_BINDINGS) as Action[]) if (Array.isArray(o.bindings[a]) && o.bindings[a].length) this.bindings[a] = o.bindings[a];
       setLang(o.lang && LANGS.includes(o.lang) ? o.lang : detectLang());
       if (o.gore !== undefined) this.goreLevel = o.gore;
@@ -447,7 +465,7 @@ export class Game {
 
   saveOptions() {
     this.bindings = this.input.bindings;
-    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, musicVol: this.musicVol, sfxVol: this.sfxVol, tips: this.tipsOn, highContrast: this.highContrast, bindings: this.bindings, lang: getLang() }));
+    storageSet(OPTS_KEY, JSON.stringify({ gore: this.goreLevel, crt: this.crtOn, musicVol: this.musicVol, sfxVol: this.sfxVol, tips: this.tipsOn, highContrast: this.highContrast, reducedFx: this.reducedFx, lightMode: this.lightMode, bindings: this.bindings, lang: getLang() }));
     this.audio.setVolumes(this.musicVol / 10, this.sfxVol / 10);
   }
 
@@ -553,7 +571,7 @@ export class Game {
   /** Regular enemy HP: grows per level in the story and per wave in arcade mode. */
   enemyHpScale() {
     const base = this.isArcade() ? 1 + (this.arcadeWave - 1) * 0.06 : 1 + this.levelIdx * 0.16;
-    return base * this.diff().hp;
+    return base * this.diff().hp * (this.modifier === 'armored' ? 1.4 : 1);
   }
 
   /** Boss HP: in arcade mode, every full loop through the 5 bosses makes them much stronger. */
@@ -563,10 +581,30 @@ export class Game {
   }
 
   enemySpeedScale() {
-    return this.isArcade() ? 1 + Math.min(this.arcadeWave, 30) * 0.008 : 1 + this.levelIdx * 0.04;
+    const base = this.isArcade() ? 1 + Math.min(this.arcadeWave, 30) * 0.008 : 1 + this.levelIdx * 0.04;
+    return base * (this.modifier === 'fast' ? 1.25 : 1);
+  }
+
+  /** Damage the player takes, after difficulty and the glass modifier. */
+  damageTakenMul() {
+    return this.diff().dmg * (this.modifier === 'glass' ? 2 : 1);
+  }
+
+  /** Damage enemies take: the glass modifier hits harder both ways. */
+  damageDealtMul() {
+    return this.modifier === 'glass' ? 1.5 : 1;
+  }
+
+  /** Picks the arena rule from the run seed, never the same twice in a row. */
+  private pickModifier(stage: number): ModifierId | null {
+    if (stage === 0) return null;
+    // the white final arena has no lighting, so a blackout would do nothing there
+    const options = (Object.keys(MODIFIERS) as ModifierId[]).filter((m) => m !== this.modifier && !(m === 'blackout' && stage % LEVELS.length === LEVELS.length - 1));
+    return withSeed(this.arcadeSeed + stage * 31337, () => pick(options));
   }
 
   private resetRun() {
+    this.modifier = null;
     this.stats = baseStats();
     this.perks = {};
     this.player = this.newPlayer();
@@ -599,6 +637,7 @@ export class Game {
   /** An arcade arena: theme and boss cycle, with waves generated from the seed. */
   private startStage(stage: number) {
     this.arcadeStage = stage;
+    this.modifier = this.pickModifier(stage);
     const i = stage % LEVELS.length;
     this.levelIdx = i;
     const boss = ARCADE_BOSSES[stage % ARCADE_BOSSES.length];
@@ -608,7 +647,11 @@ export class Game {
     this.setState('play');
     this.levelStartT = this.time;
     this.startWave();
-    if (stage > 0) this.note = { text: T().arcade.arena(T().levels[i].title), t: 3 };
+    if (this.modifier) {
+      const m = T().modifiers[this.modifier];
+      this.note = { text: T().arcade.modifierNote(m.name, Math.round((MODIFIERS[this.modifier].score - 1) * 100), m.desc), t: 4.5 };
+      this.audio.warn();
+    }
   }
 
   private arcadeWaves(stage: number): WaveDef[] {
@@ -771,7 +814,7 @@ export class Game {
   startWave() {
     const w = this.level.waves[this.waveIdx];
     const q: EnemyKind[] = [];
-    const mul = this.diff().count;
+    const mul = this.diff().count * (this.modifier === 'swarm' ? 1.4 : 1);
     for (const [k, n] of w.spawns) for (let i = 0; i < Math.round(n * mul); i++) q.push(k);
     this.queue = shuffle(q);
     this.phase = 'wave';
@@ -913,10 +956,11 @@ export class Game {
   // ---- Game helpers ----
 
   addLight(x: number, y: number, r: number, color: string) {
-    if (this.dynLights.length < 48) this.dynLights.push({ x, y, r, color });
+    if (this.dynLights.length < (this.lightMode ? 10 : 48)) this.dynLights.push({ x, y, r, color });
   }
 
   addShake(v: number) {
+    if (this.reducedFx) v *= 0.25;
     this.shake = Math.min(18, Math.max(this.shake, v));
   }
 
@@ -951,7 +995,7 @@ export class Game {
     }
     this.checkAchievements();
     const mult = this.multiplier();
-    this.score += Math.round(e.def.score * mult * this.diff().score);
+    this.score += Math.round(e.def.score * mult * this.diff().score * (this.modifier ? MODIFIERS[this.modifier].score : 1));
     const p = this.player;
     p.ram = Math.min(p.maxRam, p.ram + e.def.ram * this.stats.ramGain);
     const next = STREAKS[this.nextStreak];
@@ -1082,6 +1126,8 @@ export class Game {
 
   private finishLevel() {
     const arcade = this.isArcade();
+    const bossKills = this.progress.bossKills;
+    bossKills[this.level.boss] = (bossKills[this.level.boss] ?? 0) + 1;
     if (!arcade) {
       this.saveBest();
       if (!this.progress.beaten.includes(this.level.boss)) this.progress.beaten.push(this.level.boss);
@@ -1162,7 +1208,10 @@ export class Game {
       if (this.killLog[i].t <= 0) this.killLog.splice(i, 1);
     }
     this.shownScore = lerp(this.shownScore, this.score, clamp(rawDt * 9, 0, 1));
-    if (this.state === 'play') this.updatePlay(rawDt);
+    if (this.state === 'play') {
+      this.progress.playTime += rawDt;
+      this.updatePlay(rawDt);
+    }
     else if (this.state === 'dead') {
       // the world keeps going in very slow motion behind the death screen
       const dt = rawDt * 0.08;
