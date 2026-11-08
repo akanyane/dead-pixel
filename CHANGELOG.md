@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0](https://github.com/akanyane/dead-pixel/compare/v1.3.2...v1.4.0) (2026-11-08)
+
+
+### Features
+
+* add a light mode for slow machines ([31cc4b6](https://github.com/akanyane/dead-pixel/commit/31cc4b63a3fa1f35ca20d681cf0b78131cba265a))
+* add a reduced screen effects option and a flashing lights warning ([31cc4b6](https://github.com/akanyane/dead-pixel/commit/31cc4b63a3fa1f35ca20d681cf0b78131cba265a))
+* add a stats screen ([31cc4b6](https://github.com/akanyane/dead-pixel/commit/31cc4b63a3fa1f35ca20d681cf0b78131cba265a))
+* add endless and daily modifiers worth extra score ([#15](https://github.com/akanyane/dead-pixel/issues/15)) ([31cc4b6](https://github.com/akanyane/dead-pixel/commit/31cc4b63a3fa1f35ca20d681cf0b78131cba265a))
+
 ## [1.3.2](https://github.com/akanyane/dead-pixel/compare/v1.3.1...v1.3.2) (2026-11-07)
 
 
