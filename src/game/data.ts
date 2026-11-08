@@ -194,6 +194,17 @@ export const ARCADE_POOL: { kind: EnemyKind; from: number; weight: number }[] = 
   { kind: 'stack', from: 2, weight: 0.6 },
 ];
 
+/** Endless and daily arenas after the first get one random rule, always worth extra score. */
+export type ModifierId = 'fast' | 'armored' | 'swarm' | 'glass' | 'noterm' | 'blackout';
+export const MODIFIERS: Record<ModifierId, { score: number }> = {
+  fast: { score: 1.25 },
+  armored: { score: 1.3 },
+  swarm: { score: 1.25 },
+  glass: { score: 1.4 },
+  noterm: { score: 1.3 },
+  blackout: { score: 1.2 },
+};
+
 /** Streak thresholds. The announcement names live in i18n.ts, in the same order. */
 export const STREAKS = [5, 10, 20, 35, 50, 75, 100, 150, 250];
 

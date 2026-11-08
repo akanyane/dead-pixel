@@ -73,6 +73,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D, controlsHint =
     const left = g.queue.length + g.enemies.length;
     const label = g.isArcade() ? t.arcade.wave(g.arcadeWave, left) : t.hud.wave(g.waveIdx + 1, g.level.waves.length, left);
     drawText(ctx, label, W / 2 + 14, 8, text, { align: 'center', shadow });
+    if (g.modifier && !g.note) drawText(ctx, t.modifiers[g.modifier].name, W / 2 + 14, 18, '#ffd23d', { align: 'center', shadow });
   }
 
   // Notice
@@ -85,7 +86,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D, controlsHint =
     const a = g.announce;
     const pop = clamp((1.6 - a.t) * 12, 0, 1);
     const s = pop < 1 && a.text.length * 24 < W - 20 ? 4 : a.text.length * 18 < W - 20 ? 3 : 2;
-    const jx = rand(-1, 1);
+    const jx = g.reducedFx ? 0 : rand(-1, 1);
     drawText(ctx, a.text, W / 2 + jx - 2, 62, '#ff004c', { align: 'center', scale: s, alpha: 0.7 });
     drawText(ctx, a.text, W / 2 + jx + 2, 62, '#00e5ff', { align: 'center', scale: s, alpha: 0.7 });
     drawText(ctx, a.text, W / 2 + jx, 62, a.color, { align: 'center', scale: s });
@@ -152,7 +153,7 @@ export function renderHud(g: Game, ctx: CanvasRenderingContext2D, controlsHint =
     ctx.fillRect(0, 0, W, H);
   }
   if (g.whiteFlash > 0) {
-    ctx.fillStyle = `rgba(255,255,255,${g.whiteFlash * 0.75})`;
+    ctx.fillStyle = `rgba(255,255,255,${g.whiteFlash * (g.reducedFx ? 0.15 : 0.75)})`;
     ctx.fillRect(0, 0, W, H);
   }
 

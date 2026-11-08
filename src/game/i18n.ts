@@ -1,7 +1,7 @@
 // Every string in the game. `en` and `es` share the same type as `pt`, so a
 // missing translation breaks the build instead of showing up blank on screen.
 import type { Action } from '../core/input';
-import type { Difficulty, EnemyKind, WeaponId } from './data';
+import type { Difficulty, EnemyKind, ModifierId, WeaponId } from './data';
 
 export type Lang = 'pt' | 'en' | 'es';
 export const LANGS: Lang[] = ['pt', 'en', 'es'];
@@ -41,6 +41,7 @@ interface Strings {
     manual: string;
     options: string;
     install: string;
+    stats: string;
     controls: string;
   };
   options: {
@@ -55,11 +56,15 @@ interface Strings {
     controls: string;
     highContrast: string;
     fullscreen: string;
+    effects: string;
+    effectsFull: string;
+    effectsReduced: string;
+    lightMode: string;
     on: string;
     off: string;
     back: string;
   };
-  boot: { press: string; warning: string; needsKeyboard: string; touch: string; rotate: string };
+  boot: { press: string; warning: string; needsKeyboard: string; touch: string; rotate: string; photo: string };
   hud: {
     kills: (n: number) => string;
     wave: (i: number, n: number, left: number) => string;
@@ -221,6 +226,27 @@ interface Strings {
     endlessLabel: string;
     dailyLabel: (date: string) => string;
     retry: string;
+    modifierNote: (name: string, pct: number, desc: string) => string;
+    termLocked: string;
+  };
+  modifiers: Record<ModifierId, { name: string; desc: string }>;
+  statsScreen: {
+    title: string;
+    playTime: string;
+    kills: string;
+    melee: string;
+    deaths: string;
+    killedBy: string;
+    weapon: string;
+    shots: string;
+    commands: string;
+    streak: string;
+    endings: string;
+    bosses: string;
+    endless: string;
+    daily: string;
+    none: string;
+    nav: string;
   };
   controlsScreen: {
     title: string;
@@ -248,6 +274,7 @@ const pt: Strings = {
     manual: 'MANUAL: INIMIGOS E DICAS',
     options: 'OPÇÕES',
     install: 'INSTALAR O JOGO',
+    stats: 'ESTATÍSTICAS',
     controls: 'WASD move | mouse mira e atira | ESPAÇO dash | F golpe | Q terminal',
   },
   options: {
@@ -262,6 +289,10 @@ const pt: Strings = {
     controls: 'CONTROLES',
     highContrast: 'PERIGOS EM ALTO CONTRASTE',
     fullscreen: 'TELA CHEIA',
+    effects: 'EFEITOS DE TELA',
+    effectsFull: 'COMPLETOS',
+    effectsReduced: 'REDUZIDOS',
+    lightMode: 'MODO LEVE',
     on: 'LIGADO',
     off: 'DESLIGADO',
     back: 'VOLTAR',
@@ -272,6 +303,7 @@ const pt: Strings = {
     needsKeyboard: 'este jogo precisa de teclado e mouse',
     touch: 'toque na tela para jogar',
     rotate: 'gire o aparelho para jogar',
+    photo: 'contém luzes piscando: EFEITOS DE TELA podem ser reduzidos nas opções',
   },
   hud: {
     kills: (n) => `${n} abates`,
@@ -630,6 +662,34 @@ const pt: Strings = {
     endlessLabel: 'modo infinito',
     dailyLabel: (date) => `run diária ${date}`,
     retry: 'R começa uma nova run',
+    modifierNote: (name, pct, desc) => `${name} (+${pct}% pontos): ${desc}`,
+    termLocked: 'terminal bloqueado nesta arena',
+  },
+  modifiers: {
+    fast: { name: 'SOBRECARGA', desc: 'inimigos 25% mais rápidos' },
+    armored: { name: 'BLINDADOS', desc: 'inimigos com 40% mais HP' },
+    swarm: { name: 'ENXAME', desc: 'waves com 40% mais inimigos' },
+    glass: { name: 'VIDRO', desc: 'você causa 50% mais dano e leva o dobro' },
+    noterm: { name: 'SEM ROOT', desc: 'o terminal não abre' },
+    blackout: { name: 'APAGÃO', desc: 'a arena fica quase sem luz' },
+  },
+  statsScreen: {
+    title: 'ESTATÍSTICAS',
+    playTime: 'tempo de jogo',
+    kills: 'processos encerrados',
+    melee: 'abates com pé de cabra',
+    deaths: 'mortes',
+    killedBy: 'quem mais te matou',
+    weapon: 'arma mais usada',
+    shots: 'tiros disparados',
+    commands: 'comandos executados',
+    streak: 'maior sequência',
+    endings: 'finais vistos',
+    bosses: 'chefes derrotados',
+    endless: 'modo infinito: melhor wave',
+    daily: 'run diária de hoje',
+    none: '-',
+    nav: 'ESC volta',
   },
   controlsScreen: {
     title: 'CONTROLES',
@@ -657,6 +717,7 @@ const en: Strings = {
     manual: 'MANUAL: ENEMIES AND TIPS',
     options: 'OPTIONS',
     install: 'INSTALL THE GAME',
+    stats: 'STATS',
     controls: 'WASD move | mouse aim and shoot | SPACE dash | F strike | Q terminal',
   },
   options: {
@@ -671,6 +732,10 @@ const en: Strings = {
     controls: 'CONTROLS',
     highContrast: 'HIGH CONTRAST HAZARDS',
     fullscreen: 'FULLSCREEN',
+    effects: 'SCREEN EFFECTS',
+    effectsFull: 'FULL',
+    effectsReduced: 'REDUCED',
+    lightMode: 'LIGHT MODE',
     on: 'ON',
     off: 'OFF',
     back: 'BACK',
@@ -681,6 +746,7 @@ const en: Strings = {
     needsKeyboard: 'this game needs a keyboard and a mouse',
     touch: 'tap the screen to play',
     rotate: 'turn your device sideways to play',
+    photo: 'contains flashing lights: SCREEN EFFECTS can be reduced in the options',
   },
   hud: {
     kills: (n) => `${n} kills`,
@@ -1039,6 +1105,34 @@ const en: Strings = {
     endlessLabel: 'endless mode',
     dailyLabel: (date) => `daily run ${date}`,
     retry: 'R starts a new run',
+    modifierNote: (name, pct, desc) => `${name} (+${pct}% score): ${desc}`,
+    termLocked: 'terminal locked in this arena',
+  },
+  modifiers: {
+    fast: { name: 'OVERLOAD', desc: 'enemies are 25% faster' },
+    armored: { name: 'ARMORED', desc: 'enemies have 40% more HP' },
+    swarm: { name: 'SWARM', desc: 'waves have 40% more enemies' },
+    glass: { name: 'GLASS', desc: 'you deal 50% more damage and take double' },
+    noterm: { name: 'NO ROOT', desc: 'the terminal will not open' },
+    blackout: { name: 'BLACKOUT', desc: 'the arena goes almost dark' },
+  },
+  statsScreen: {
+    title: 'STATS',
+    playTime: 'time played',
+    kills: 'processes terminated',
+    melee: 'crowbar kills',
+    deaths: 'deaths',
+    killedBy: 'killed you the most',
+    weapon: 'most used weapon',
+    shots: 'shots fired',
+    commands: 'commands run',
+    streak: 'best streak',
+    endings: 'endings seen',
+    bosses: 'bosses defeated',
+    endless: 'endless mode: best wave',
+    daily: "today's daily run",
+    none: '-',
+    nav: 'ESC back',
   },
   controlsScreen: {
     title: 'CONTROLS',
@@ -1066,6 +1160,7 @@ const es: Strings = {
     manual: 'MANUAL: ENEMIGOS Y CONSEJOS',
     options: 'OPCIONES',
     install: 'INSTALAR EL JUEGO',
+    stats: 'ESTADÍSTICAS',
     controls: 'WASD mover | ratón apuntar y disparar | ESPACIO dash | F golpe | Q terminal',
   },
   options: {
@@ -1080,6 +1175,10 @@ const es: Strings = {
     controls: 'CONTROLES',
     highContrast: 'PELIGROS EN ALTO CONTRASTE',
     fullscreen: 'PANTALLA COMPLETA',
+    effects: 'EFECTOS DE PANTALLA',
+    effectsFull: 'COMPLETOS',
+    effectsReduced: 'REDUCIDOS',
+    lightMode: 'MODO LIGERO',
     on: 'SÍ',
     off: 'NO',
     back: 'VOLVER',
@@ -1090,6 +1189,7 @@ const es: Strings = {
     needsKeyboard: 'este juego necesita teclado y ratón',
     touch: 'toca la pantalla para jugar',
     rotate: 'gira el dispositivo para jugar',
+    photo: 'contiene luces parpadeantes: los EFECTOS DE PANTALLA se reducen en opciones',
   },
   hud: {
     kills: (n) => `${n} bajas`,
@@ -1448,6 +1548,34 @@ const es: Strings = {
     endlessLabel: 'modo infinito',
     dailyLabel: (date) => `run diaria ${date}`,
     retry: 'R empieza una nueva run',
+    modifierNote: (name, pct, desc) => `${name} (+${pct}% puntos): ${desc}`,
+    termLocked: 'terminal bloqueada en esta arena',
+  },
+  modifiers: {
+    fast: { name: 'SOBRECARGA', desc: 'enemigos un 25% más rápidos' },
+    armored: { name: 'BLINDADOS', desc: 'enemigos con un 40% más de HP' },
+    swarm: { name: 'ENJAMBRE', desc: 'oleadas con un 40% más de enemigos' },
+    glass: { name: 'CRISTAL', desc: 'haces un 50% más de daño y recibes el doble' },
+    noterm: { name: 'SIN ROOT', desc: 'la terminal no se abre' },
+    blackout: { name: 'APAGÓN', desc: 'la arena queda casi a oscuras' },
+  },
+  statsScreen: {
+    title: 'ESTADÍSTICAS',
+    playTime: 'tiempo de juego',
+    kills: 'procesos terminados',
+    melee: 'bajas con la palanca',
+    deaths: 'muertes',
+    killedBy: 'quien más te mató',
+    weapon: 'arma más usada',
+    shots: 'disparos',
+    commands: 'comandos ejecutados',
+    streak: 'mejor racha',
+    endings: 'finales vistos',
+    bosses: 'jefes derrotados',
+    endless: 'modo infinito: mejor wave',
+    daily: 'run diaria de hoy',
+    none: '-',
+    nav: 'ESC vuelve',
   },
   controlsScreen: {
     title: 'CONTROLES',

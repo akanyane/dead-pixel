@@ -80,6 +80,11 @@ export class Terminal {
   }
 
   show() {
+    if (this.g.modifier === 'noterm') {
+      this.g.note = { text: T().arcade.termLocked, t: 1.6 };
+      this.g.audio.ui(false);
+      return;
+    }
     this.open = true;
     this.line = '';
     this.hIdx = -1;
@@ -131,6 +136,7 @@ export class Terminal {
       }
       p.ram -= found.cost;
       g.usedCommand = true;
+      g.progress.commands++;
       this.print(found.run(g), '#a8ffc0');
       g.audio.command();
       g.glitch = Math.max(g.glitch, 0.25);

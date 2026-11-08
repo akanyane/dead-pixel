@@ -23,7 +23,7 @@ A top-down 2D tech-horror mystery shooter for the browser.
 </div>
 
 > [!WARNING]
-> Contains pixelated violence, dismemberment and digital blood. The options menu can tone the gore down.
+> Contains pixelated violence, dismemberment, digital blood and flashing lights. The options menu can tone down the gore and the screen effects.
 
 ---
 
@@ -42,6 +42,7 @@ A top-down 2D tech-horror mystery shooter for the browser.
 - [Skins](#skins)
 - [Achievements](#achievements)
 - [Options and accessibility](#options-and-accessibility)
+- [Stats](#stats)
 - [Languages](#languages)
 - [In-game manual and tips](#in-game-manual-and-tips)
 - [Score and streaks](#score-and-streaks)
@@ -133,7 +134,18 @@ Pick a mode under **PLAY** in the main menu.
 | **Endless** | Unlocked after the ending. Arenas cycle through the five themes, with 4 waves and a boss each. Enemies get tougher every wave, and bosses come back much stronger on every loop. One life |
 | **Daily run** | Same map, same waves and same patches for everyone on the same day (UTC). One life. Press `C` on the death screen to copy your result |
 
-Endless and the daily run are always played on normal, so records stay comparable. Your best endless wave and today's best daily run are shown in the menu.
+From the second arena on, every endless and daily arena gets a random **modifier** worth extra score. In the daily run they are the same for everyone.
+
+| Modifier | Rule | Score |
+| --- | --- | --- |
+| Overload | Enemies are 25% faster | +25% |
+| Armored | Enemies have 40% more HP | +30% |
+| Swarm | Waves have 40% more enemies | +25% |
+| Glass | You deal 50% more damage and take double | +40% |
+| No root | The terminal will not open | +30% |
+| Blackout | The arena goes almost dark | +20% |
+
+Endless and the daily run are always played on normal, so records stay comparable. Your best endless wave and today's best daily run are shown in the menu and on the **STATS** screen.
 
 ## Controls
 
@@ -347,11 +359,17 @@ They reward combat (streaks, total kills, a single `rm -rf` terminating 20 proce
 | **Gore** | Maximum, normal or mild |
 | **Music** and **sound effects** | Separate volumes in 10% steps; left and right arrows adjust them |
 | **CRT effect** | Turns the old-monitor shader on or off |
+| **Screen effects** | *Reduced* cuts screen shake, camera kick, white flashes and glitches, and turns off color inversion, for light sensitivity or motion sickness |
+| **Light mode** | Fewer particles, body parts and dynamic lights, for slow machines |
 | **Tips and cards** | New enemy cards, death tips and context hints |
 | **High contrast hazards** | Enemy shots get a black and white outline, danger zones get diagonal stripes, and warning lines turn white, so nothing depends on telling red from green |
 | **Controls** | Remap movement, dash, strike, terminal and pause |
 | **Fullscreen** | Fills the whole screen (where the browser supports it) |
 | **Language** | English, Portuguese or Spanish |
+
+## Stats
+
+The **STATS** screen in the main menu keeps track of time played, kills, crowbar kills, deaths and what killed you the most, your most used weapon, shots fired, terminal commands, best streak, endings seen, bosses defeated, and your endless and daily records.
 
 ## Languages
 
@@ -487,7 +505,7 @@ __g.beginPlay();       // skip the story
 __g.player.ram = 512;  // fill up RAM
 ```
 
-The smoke tests boot the game, play part of a level, check that the daily run is identical across two sessions, that endless mode stays locked until the ending, and that the production build loads offline once its service worker has cached it. The `ci.yml` workflow runs the typecheck, the build and these tests on every pull request.
+The tests include a bot that plays level 1 from the first wave to the boss with the simulation stepped at 60 Hz, failing if any wave stalls. The smoke tests boot the game, play part of a level, check that the daily run is identical across two sessions, that endless mode stays locked until the ending, and that the production build loads offline once its service worker has cached it. The `ci.yml` workflow runs the typecheck, the build and these tests on every pull request.
 
 ## Deploying the game
 

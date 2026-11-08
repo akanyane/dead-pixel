@@ -8,7 +8,7 @@ import { Game, todayUTC } from './game/game';
 import { advanceEnding, logDone, renderClear, renderDead, renderHud, renderLog, renderPause, renderPerks, renderStory, renderToast, renderVictory, storyDuration } from './game/hud';
 import { LANGS, T, getLang, setLang } from './game/i18n';
 import { renderWorld } from './game/render';
-import { openAchievements, openSkins, renderAchievements, renderIntro, renderManual, renderSkins, updateAchievements, updateIntro, updateManual, updateSkins } from './game/screens';
+import { openAchievements, openSkins, renderAchievements, renderIntro, renderManual, renderSkins, renderStats, updateAchievements, updateIntro, updateManual, updateSkins, updateStats } from './game/screens';
 import { SPR, buildSprites, drawSprite, skinSprites } from './game/sprites';
 
 const screen = document.getElementById('screen') as HTMLCanvasElement;
@@ -107,6 +107,7 @@ function menuItems(): MenuItem[] {
   items.push({ label: t.menu.newGame, act: () => { game.menuPage = 'play'; game.playIdx = 1; } });
   items.push({ label: t.menu.skins, act: () => openSkins(game) });
   items.push({ label: t.menu.achievements, act: () => openAchievements(game, 'menu') });
+  items.push({ label: t.menu.stats, act: () => game.setState('stats') });
   items.push({ label: t.menu.manual, act: () => openManual('menu') });
   items.push({ label: t.menu.options, act: () => openOptions('menu') });
   // only offered when the browser says the game can be installed
@@ -161,6 +162,8 @@ function optionItems(): MenuItem[] {
     { label: `${o.sfx}: ${volBar(game.sfxVol)}`, act: () => setVolume('sfxVol', (game.sfxVol + 1) % 11), adjust: (d) => setVolume('sfxVol', game.sfxVol + d) },
     { label: `${o.crt}: ${onOff(game.crtOn)}`, act: () => { game.crtOn = !game.crtOn; presenter.crtEnabled = game.crtOn; game.saveOptions(); } },
     { label: `${o.tips}: ${onOff(game.tipsOn)}`, act: () => { game.tipsOn = !game.tipsOn; game.saveOptions(); } },
+    { label: `${o.effects}: ${game.reducedFx ? o.effectsReduced : o.effectsFull}`, act: () => { game.reducedFx = !game.reducedFx; game.saveOptions(); } },
+    { label: `${o.lightMode}: ${onOff(game.lightMode)}`, act: () => { game.lightMode = !game.lightMode; game.saveOptions(); } },
     { label: `${o.highContrast}: ${onOff(game.highContrast)}`, act: () => { game.highContrast = !game.highContrast; game.saveOptions(); } },
     { label: o.controls, act: openControls },
     ...(fullscreenSupported() ? [{ label: `${o.fullscreen}: ${onOff(isFullscreen())}`, act: () => void toggleFullscreen() }] : []),
@@ -230,8 +233,8 @@ function drawList(items: MenuItem[], idx: number, y: number, rowH: number, halfW
 }
 
 const MENU_Y = 122;
-const MENU_ROW = 14;
-const OPT_Y = 62;
+const MENU_ROW = 13;
+const OPT_Y = 50;
 const CTRL_Y = 46;
 const CTRL_ROW = 13;
 
@@ -243,7 +246,7 @@ function renderOptions() {
     ctx.fillStyle = 'rgba(2,6,10,.9)';
     ctx.fillRect(0, 0, W, H);
   }
-  drawText(ctx, T().options.title, W / 2, 34, '#f0efe8', { align: 'center', scale: 3 });
+  drawText(ctx, T().options.title, W / 2, 22, '#f0efe8', { align: 'center', scale: 3 });
   drawList(optionItems(), game.optionsIdx, OPT_Y, 16, 130);
   drawText(ctx, T().options.adjust, W / 2, H - 22, '#6d8a78', { align: 'center' });
 }
@@ -331,7 +334,7 @@ function renderMenu(dt: number) {
   // dripping title
   const title = 'DEAD PIXEL';
   const ty = 34;
-  const gl = Math.random() < 0.06 ? rand(-3, 3) : 0;
+  const gl = !game.reducedFx && Math.random() < 0.06 ? rand(-3, 3) : 0;
   drawText(ctx, title, W / 2 - 2 + gl, ty, '#00e5ff', { align: 'center', scale: 5, alpha: 0.65 });
   drawText(ctx, title, W / 2 + 2 - gl, ty, '#ff004c', { align: 'center', scale: 5, alpha: 0.65 });
   drawText(ctx, title, W / 2, ty, '#f0efe8', { align: 'center', scale: 5 });
@@ -385,6 +388,7 @@ function renderBoot() {
   if (n > 9) {
     if (Math.floor(game.time * 2) % 2) drawText(ctx, T().boot.press, W / 2, 190, '#39ff88', { align: 'center' });
     drawText(ctx, T().boot.warning, W / 2, 232, '#3b5245', { align: 'center' });
+    drawText(ctx, T().boot.photo, W / 2, 244, '#8a7a3a', { align: 'center' });
     if (matchMedia('(pointer: coarse)').matches) drawText(ctx, T().boot.touch, W / 2, 212, '#ffd23d', { align: 'center' });
   }
   ctx.fillStyle = '#000';
@@ -453,6 +457,9 @@ function handleInput(dt: number) {
       break;
     case 'achievements':
       updateAchievements(game, input);
+      break;
+    case 'stats':
+      updateStats(game, input);
       break;
     case 'intro':
       updateIntro(game, input);
@@ -546,6 +553,9 @@ function render(dt: number) {
     case 'achievements':
       renderAchievements(game, ctx);
       break;
+    case 'stats':
+      renderStats(game, ctx);
+      break;
     case 'log':
       renderLog(game, ctx);
       break;
@@ -585,7 +595,8 @@ function frame(now: number) {
   game.update(dt);
   handleInput(dt);
   render(dt);
-  presenter.present(game.time, game.glitch, game.invert > 0 && game.state === 'play');
+  // reduced effects: a faint glitch instead of a strong one, and no color inversion
+  presenter.present(game.time, game.reducedFx ? game.glitch * 0.15 : game.glitch, !game.reducedFx && game.invert > 0 && game.state === 'play');
   input.endFrame();
   requestAnimationFrame(frame);
 }

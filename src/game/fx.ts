@@ -53,7 +53,10 @@ const MAX_PARTS = 2600;
 const MAX_GIBS = 220;
 
 export function spawnPart(g: Game, kind: P, x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, color: string, size = 1, stainSet: string[] | null = null) {
-  if (g.parts.length >= MAX_PARTS) g.parts[randInt(0, g.parts.length - 1)] = g.parts[g.parts.length - 1], g.parts.pop();
+  // light mode keeps about a third of the particles and a much smaller pool
+  if (g.lightMode && Math.random() < 0.65) return;
+  const max = g.lightMode ? MAX_PARTS / 4 : MAX_PARTS;
+  if (g.parts.length >= max) g.parts[randInt(0, g.parts.length - 1)] = g.parts[g.parts.length - 1], g.parts.pop();
   g.parts.push({ kind, x, y, z, vx, vy, vz, life, max: life, color, size, stainSet });
 }
 
@@ -114,7 +117,7 @@ export function bloodFountain(g: Game, x: number, y: number, z: number, n: numbe
 }
 
 export function spawnGib(g: Game, spr: Sprite, x: number, y: number, z: number, force: number, ang: number, bleed: string[] | null) {
-  if (g.gibs.length >= MAX_GIBS) stampGib(g, g.gibs.shift()!);
+  if (g.gibs.length >= (g.lightMode ? MAX_GIBS / 4 : MAX_GIBS)) stampGib(g, g.gibs.shift()!);
   const a = ang + rand(-1, 1);
   const f = rand(0.35, 1) * force;
   g.gibs.push({ spr, x, y, z, vx: Math.cos(a) * f, vy: Math.sin(a) * f * 0.8, vz: rand(60, 170), rot: rand(6), vr: rand(-14, 14), bleed, bounces: 0 });

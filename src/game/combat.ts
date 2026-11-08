@@ -55,6 +55,7 @@ function fireWeapon(g: Game) {
     p.ammo[p.weapon]--;
     g.usedWeapon = true;
   }
+  g.progress.shots[p.weapon] = (g.progress.shots[p.weapon] ?? 0) + 1;
   const over = p.overclockT > 0 ? 1.9 : 1;
   p.cd = def.rate / (s.rate * over);
   p.gunKick = def.kick;
@@ -156,6 +157,7 @@ interface HurtOpts {
 
 export function hurtEnemy(g: Game, e: Enemy, dmg: number, ang: number, o: HurtOpts = {}) {
   if (e.dead || e.spawnT > 0.25) return;
+  dmg *= g.damageDealtMul();
   if (e.kind === 'monolith' && e.state === 0) {
     dmg *= 0.3; // armored until the doors open
     g.hint('armored', T().hints.armored);
@@ -400,7 +402,7 @@ export function hurtBarrel(g: Game, b: { x: number; y: number; hp: number; flash
 export function hurtPlayer(g: Game, dmg: number, srcX: number, srcY: number, by: KillerId) {
   const p = g.player;
   if (g.god || p.dead || p.invuln > 0 || p.dashT > 0 || p.sudoT > 0) return false;
-  dmg *= g.diff().dmg;
+  dmg *= g.damageTakenMul();
   g.lastKiller = by;
   g.tookDamage = true;
   p.hp -= dmg;
@@ -439,6 +441,7 @@ function killPlayer(g: Game) {
   p.hp = 0;
   g.saveBest();
   g.progress.deaths++;
+  g.progress.deathsBy[g.lastKiller] = (g.progress.deathsBy[g.lastKiller] ?? 0) + 1;
   g.saveProgress();
   g.onPlayerDeath();
   dismember(g, p.x, p.y, rand(6.3), 200, BLOOD.red, true);
